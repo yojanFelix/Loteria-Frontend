@@ -1,5 +1,33 @@
+
+.logo {
+   width: 90%;
+  max-width: 900px;
+  margin: 24px auto;
+  display: block;
+}
 .app-background {
   width: 100vw;
-  height: 100vh;
-  background-color: #f5f0e6; /* beige suave */
+  min-height: 200vh;
+  background-color: #ffffff;
+}
+
+.content-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 10vh; /* resta el espacio que ocupa la navbar */
+}
+
+.button-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 10vh; /* resta el espacio que ocupa la navbar */
+}
+
+.text-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 3vh; /* resta el espacio que ocupa la navbar */
 }

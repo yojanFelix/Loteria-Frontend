@@ -7,9 +7,19 @@
 html, body, #root {
   width: 100%;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 body {
   font-family: system-ui, sans-serif;
-  background-color: #f5f0e6; /* beige, como respaldo */
+  background-color: #ffffff; /* beige, como respaldo */
+}
+
+html{
+  overflow-y: scroll;
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
 }
