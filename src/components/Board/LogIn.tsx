@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import styled from 'styled-components'
 
-const Form = () => {
+interface LogInProps {
+  onLoginExitoso: () => void;
+}
+
+const Form = ({ onLoginExitoso }: LogInProps) => {
   const [accountNumber, setAccountNumber] = useState('')
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
@@ -28,15 +32,10 @@ const Form = () => {
         return
       }
 
-      // Login exitoso
-      console.log('Login exitoso:', data)
-      // Aquí podrías guardar el token/usuario y redirigir, ej:
-      // localStorage.setItem('usuario', JSON.stringify(data.usuario))
-      // navigate('/tablero')
-
+      localStorage.setItem('accountNumber', accountNumber)
+      onLoginExitoso()
     } catch (err) {
       setError('No se pudo conectar con el servidor')
-      console.error(err)
     } finally {
       setCargando(false)
     }

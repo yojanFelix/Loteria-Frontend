@@ -1,0 +1,47 @@
+.room-list-card {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 30px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.room-items {
+  list-style: none;
+  padding: 0;
+}
+
+.room-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+.room-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.room-name {
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+.room-code {
+  color: #555;
+  font-family: monospace;
+  font-size: 1.05em;
+}
+
+.room-players {
+  font-size: 0.9em;
+  color: #777;
+}

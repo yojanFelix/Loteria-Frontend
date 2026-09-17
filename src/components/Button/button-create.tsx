@@ -1,9 +1,15 @@
 import styled from 'styled-components';
 
-const Button = () => {
+// 1. Definimos la propiedad onClick
+interface ButtonProps {
+  onClick?: () => void;
+}
+
+// 2. Recibimos onClick como parámetro y lo pasamos al botón
+const Button = ({ onClick }: ButtonProps) => {
   return (
     <StyledWrapper>
-      <button className="Btn">
+      <button className="Btn" onClick={onClick}>
         <div className="sign">+</div>
         <div className="text">Crear</div>
       </button>
@@ -70,6 +76,7 @@ const StyledWrapper = styled.div`
   /* button click effect*/
   .Btn:active {
     transform: translate(2px ,2px);
-  }`;
+  }
+`;
 
 export default Button;

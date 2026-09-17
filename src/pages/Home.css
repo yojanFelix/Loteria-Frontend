@@ -1,0 +1,67 @@
+.content-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 10vh; /* resta el espacio que ocupa la navbar */
+}
+
+.button-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 10vh; /* resta el espacio que ocupa la navbar */
+}
+
+.text-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 5vh; 
+}
+
+.titulo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 10vh; 
+}
+
+.modal-input-group {
+  margin: 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modal-input-group input {
+  padding: 10px;
+  font-size: 1.1em;
+  text-align: center;
+  border: 2px solid #ccc;
+  border-radius: 6px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.modal-actions button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.btn-cancel {
+  background-color: #f1f1f1;
+  color: #333;
+}
+
+.btn-confirm {
+  background-color: #4CAF50;
+  color: white;
+}

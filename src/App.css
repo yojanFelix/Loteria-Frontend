@@ -18,18 +18,3 @@
   align-items: center;
   min-height: 10vh; /* resta el espacio que ocupa la navbar */
 }
-
-.button-wrapper {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 10vh; /* resta el espacio que ocupa la navbar */
-}
-
-.text-wrapper {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 3vh; /* resta el espacio que ocupa la navbar */
-}
-
