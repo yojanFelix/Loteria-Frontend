@@ -18,8 +18,7 @@ const StyledWrapper = styled.div`
     justify-content: flex-start;
     width: 45px;
     height: 45px;
-    border: none;
-    border-radius: 0px;
+    border-radius: 1rem;
     cursor: pointer;
     position: relative;
     overflow: hidden;
