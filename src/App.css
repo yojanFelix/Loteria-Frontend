@@ -7,8 +7,9 @@
 }
 .app-background {
   width: 100vw;
-  min-height: 200vh;
+  min-height: 100vh;
   background-color: #ffffff;
+  overflow: hidden;
 }
 
 .content-wrapper {
@@ -31,3 +32,4 @@
   align-items: center;
   min-height: 3vh; /* resta el espacio que ocupa la navbar */
 }
+

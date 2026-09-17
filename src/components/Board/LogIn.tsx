@@ -1,20 +1,73 @@
-import styled from 'styled-components';
+import { useState } from 'react'
+import styled from 'styled-components'
 
 const Form = () => {
+  const [accountNumber, setAccountNumber] = useState('')
+  const [error, setError] = useState('')
+  const [cargando, setCargando] = useState(false)
+
+  const manejarSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setCargando(true)
+
+    try {
+      const response = await fetch('http://localhost:3000/api/users/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ accountNumber }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.ok) {
+        setError(data.message || 'Número de cuenta inválido')
+        setCargando(false)
+        return
+      }
+
+      // Login exitoso
+      console.log('Login exitoso:', data)
+      // Aquí podrías guardar el token/usuario y redirigir, ej:
+      // localStorage.setItem('usuario', JSON.stringify(data.usuario))
+      // navigate('/tablero')
+
+    } catch (err) {
+      setError('No se pudo conectar con el servidor')
+      console.error(err)
+    } finally {
+      setCargando(false)
+    }
+  }
+
   return (
     <StyledWrapper>
       <div className="form-container">
         <div className="logo-container">Ingresa tu numero de cuenta</div>
-        <form className="form">
+        <form className="form" onSubmit={manejarSubmit}>
           <div className="form-group">
-            <label htmlFor="password">Clave</label>
-            <input required placeholder="12345678" name="password" id="password" type="password" />
+            <input
+              required
+              placeholder="12345678"
+              name="accountNumber"
+              id="accountNumber"
+              type="text"
+              value={accountNumber}
+              onChange={(e) => setAccountNumber(e.target.value)}
+            />
           </div>
-          <button type="submit" className="form-submit-btn">Login</button>
+
+          {error && <p className="error-message">{error}</p>}
+
+          <button type="submit" className="form-submit-btn" disabled={cargando}>
+            {cargando ? 'Verificando...' : 'Ingresar'}
+          </button>
         </form>
       </div>
     </StyledWrapper>
-  );
+  )
 }
 
 const StyledWrapper = styled.div`
@@ -56,17 +109,12 @@ const StyledWrapper = styled.div`
     gap: 2px;
   }
 
-  .form-container .form-group label {
-    display: block;
-    margin-bottom: 5px;
-  }
-
   .form-container .form-group input {
     width: 100%;
     padding: 12px 16px;
     border-radius: 6px;
     font-family: inherit;
-    border: 1px solid #ccc;
+    border: 1px solid #141414;
   }
 
   .form-container .form-group input::placeholder {
@@ -76,6 +124,13 @@ const StyledWrapper = styled.div`
   .form-container .form-group input:focus {
     outline: none;
     border-color: #1778f2;
+  }
+
+  .error-message {
+    color: #e0245e;
+    font-size: 13px;
+    margin: 0;
+    text-align: center;
   }
 
   .form-container .form-submit-btn {
@@ -102,22 +157,10 @@ const StyledWrapper = styled.div`
     background-color: #313131;
   }
 
-  .form-container .link {
-    color: #1778f2;
-    text-decoration: none;
+  .form-container .form-submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
+`
 
-  .form-container .signup-link {
-    align-self: center;
-    font-weight: 500;
-  }
-
-  .form-container .signup-link .link {
-    font-weight: 400;
-  }
-
-  .form-container .link:hover {
-    text-decoration: underline;
-  }`;
-
-export default Form;
+export default Form
