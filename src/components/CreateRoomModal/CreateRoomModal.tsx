@@ -1,23 +1,33 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
+import { ETIQUETAS_MODOS, type ModoJuego } from '../../socket/socket';
 
 interface CreateRoomModalProps {
   onClose: () => void;
-  onCreate: (maxPlayers: number) => void;
+  onCreate: (nombre: string, maxPlayers: number, alias: string, modo: ModoJuego) => void;
 }
 
+// Mismas reglas que valida el backend (validateRoomName y validateAlias)
+const TEXTO_VALIDO = /^[\p{L}\p{N} _-]+$/u;
+
+const MODOS: ModoJuego[] = ['LINE', 'CORNERS', 'CENTER_2X2', 'SQUARE_2X2'];
+
 const CreateRoomModal = ({ onClose, onCreate }: CreateRoomModalProps) => {
-  const [maxPlayers, setMaxPlayers] = useState<number>(2);
+  const [nombre, setNombre] = useState('');
+  const [alias, setAlias] = useState('');
+  const [maxPlayers, setMaxPlayers] = useState<number | ''>(2);
+  const [modo, setModo] = useState<ModoJuego>('LINE');
+  const [error, setError] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10);
-    
+
     // Si el usuario borra el contenido, lo dejamos vacío temporalmente
     if (isNaN(value)) {
-      setMaxPlayers("" as any);
+      setMaxPlayers('');
       return;
     }
-    
+
     // Evitamos que escriban más de 50 de forma manual
     if (value > 50) {
       setMaxPlayers(50);
@@ -28,19 +38,40 @@ const CreateRoomModal = ({ onClose, onCreate }: CreateRoomModalProps) => {
 
   const handleBlur = () => {
     // Al quitar el foco del input, si está vacío o es menor a 2, lo forzamos a 2
-    if (!maxPlayers || maxPlayers < 2) {
+    if (typeof maxPlayers !== 'number' || maxPlayers < 2) {
       setMaxPlayers(2);
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    let finalValue = maxPlayers;
-    
-    if (!finalValue || finalValue < 2) finalValue = 2;
+    setError('');
+
+    let finalValue: number = typeof maxPlayers === 'number' ? maxPlayers : 2;
+    if (finalValue < 2) finalValue = 2;
     if (finalValue > 50) finalValue = 50;
-    
-    onCreate(finalValue);
+
+    const nombreLimpio = nombre.trim();
+    const aliasLimpio = alias.trim();
+
+    if (nombreLimpio.length < 3 || nombreLimpio.length > 30) {
+      setError('El nombre de la sala debe tener entre 3 y 30 caracteres');
+      return;
+    }
+    if (!TEXTO_VALIDO.test(nombreLimpio)) {
+      setError('El nombre solo puede tener letras, números, espacios, guiones y guiones bajos');
+      return;
+    }
+    if (aliasLimpio.length < 3 || aliasLimpio.length > 12) {
+      setError('El alias debe tener entre 3 y 12 caracteres');
+      return;
+    }
+    if (!TEXTO_VALIDO.test(aliasLimpio)) {
+      setError('El alias solo puede tener letras, números, espacios, guiones y guiones bajos');
+      return;
+    }
+
+    onCreate(nombreLimpio, finalValue, aliasLimpio, modo);
   };
 
   return (
@@ -48,7 +79,7 @@ const CreateRoomModal = ({ onClose, onCreate }: CreateRoomModalProps) => {
       <div className="overlay" onClick={onClose}>
         <div className="modal" onClick={(e) => e.stopPropagation()}>
           <form className="form" onSubmit={handleSubmit}>
-            
+
             <div className="header">
               <h2>Configurar Sala</h2>
               <button type="button" className="close-btn" onClick={onClose}>&times;</button>
@@ -60,20 +91,65 @@ const CreateRoomModal = ({ onClose, onCreate }: CreateRoomModalProps) => {
 
             <div className="room-config--form">
               <div className="input_container">
+                <label htmlFor="room_name" className="input_label">NOMBRE DE LA SALA (3 - 30)</label>
+                <input
+                  id="room_name"
+                  className="input_field"
+                  type="text"
+                  value={nombre}
+                  maxLength={30}
+                  onChange={(e) => setNombre(e.target.value)}
+                  placeholder="Sala de los cuates"
+                />
+              </div>
+
+              <div className="input_container">
+                <label htmlFor="room_alias" className="input_label">TU ALIAS (3 - 12)</label>
+                <input
+                  id="room_alias"
+                  className="input_field"
+                  type="text"
+                  value={alias}
+                  maxLength={12}
+                  onChange={(e) => setAlias(e.target.value)}
+                  placeholder="El Gallo"
+                />
+              </div>
+
+              <div className="input_container">
                 <label htmlFor="max_players" className="input_label">MÁXIMO DE JUGADORES (2 - 50)</label>
-                <input 
-                  id="max_players" 
-                  className="input_field" 
-                  type="number" 
-                  min="2" 
-                  max="50" 
+                <input
+                  id="max_players"
+                  className="input_field"
+                  type="number"
+                  min="2"
+                  max="50"
                   value={maxPlayers}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  placeholder="2" 
+                  placeholder="2"
                 />
               </div>
+
+              <div className="input_container">
+                <span className="input_label">TIPO DE JUEGO</span>
+                <div className="modo-opciones">
+                  {MODOS.map((valor) => (
+                    <label className="modo-opcion" key={valor}>
+                      <input
+                        type="radio"
+                        name="modo"
+                        checked={modo === valor}
+                        onChange={() => setModo(valor)}
+                      />
+                      {ETIQUETAS_MODOS[valor]}
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
+
+            {error && <p className="error-message">{error}</p>}
 
             <button type="submit" className="purchase--btn">Crear</button>
           </form>
@@ -195,6 +271,28 @@ const StyledWrapper = styled.div`
     border: 1px solid transparent;
     box-shadow: 0px 0px 0px 2px #242424;
     background-color: transparent;
+  }
+
+  .error-message {
+    color: #e0245e;
+    font-size: 13px;
+    margin: 0;
+    text-align: center;
+  }
+
+  .modo-opciones {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .modo-opcion {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #333;
+    cursor: pointer;
   }
 
   .purchase--btn {
