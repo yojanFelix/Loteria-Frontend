@@ -174,8 +174,8 @@ function Home({
     }
 
     const cleanAlias = aliasUnirse.trim();
-    if (cleanAlias.length < 3 || cleanAlias.length > 30) {
-      setError('El alias debe tener entre 3 y 30 caracteres');
+    if (cleanAlias.length < 3 || cleanAlias.length > 45) {
+      setError('El alias debe tener entre 3 y 45 caracteres');
       return;
     }
     if (!TEXTO_VALIDO.test(cleanAlias)) {
@@ -199,8 +199,8 @@ function Home({
     setError('');
 
     const cleanNombre = (nombreSala.trim() || 'Sala Mexicana');
-    if (cleanNombre.length < 3 || cleanNombre.length > 30) {
-      setError('El nombre de la sala debe tener entre 3 y 30 caracteres');
+    if (cleanNombre.length < 3 || cleanNombre.length > 45) {
+      setError('El nombre de la sala debe tener entre 3 y 45 caracteres');
       return;
     }
     if (!TEXTO_VALIDO.test(cleanNombre)) {
@@ -209,8 +209,8 @@ function Home({
     }
 
     const cleanAlias = aliasCrear.trim();
-    if (cleanAlias.length < 3 || cleanAlias.length > 30) {
-      setError('Tu alias debe tener entre 3 y 30 caracteres');
+    if (cleanAlias.length < 3 || cleanAlias.length > 45) {
+      setError('Tu alias debe tener entre 3 y 45 caracteres');
       return;
     }
     if (!TEXTO_VALIDO.test(cleanAlias)) {
@@ -320,9 +320,10 @@ function Home({
             <InputAlias
               type="text"
               placeholder="Tu alias o nombre"
-              maxLength={30}
+              maxLength={45}
               value={aliasUnirse}
               onChange={(e) => setAliasUnirse(e.target.value)}
+              disabled
             />
           </CamposWrapper>
 
@@ -348,17 +349,18 @@ function Home({
             <InputPequeno
               type="text"
               placeholder="Nombre de la sala (opcional)"
-              maxLength={30}
+              maxLength={45}
               value={nombreSala}
               onChange={(e) => setNombreSala(e.target.value)}
             />
             <InputPequeno
               type="text"
               placeholder="Tu alias o nombre"
-              maxLength={30}
+              maxLength={45}
               value={aliasCrear}
               onChange={(e) => setAliasCrear(e.target.value)}
               required
+              disabled
             />
           </CamposCrearRow>
 

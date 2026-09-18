@@ -1,32 +1,20 @@
 import styled from 'styled-components'
 import Card from '../Card/Card'
 
-// Importa automáticamente todas las imágenes .webp de la carpeta cards
-const cardImages = import.meta.glob('../../assets/cards/*.webp', {
-  eager: true,
-  import: 'default',
-}) as Record<string, string>
-
-interface CartaMezclada {
-  image: string
-  name: string
-}
-
-// La mezcla se calcula una sola vez al cargar el módulo, no en cada render.
-// (Este componente es solo un prototipo visual: las tablas reales las da el backend.)
-const cartas: CartaMezclada[] = Object.entries(cardImages)
-  .sort(() => Math.random() - 0.5) // mezcla aleatoriamente
+// Generamos un arreglo aleatorio de 16 cartas para la vista previa del menú
+const cartasAleatorias = Array.from({ length: 54 }, (_, i) => i + 1)
+  .sort(() => Math.random() - 0.5)
   .slice(0, 16)
-  .map(([path, image]) => {
-    const nombreArchivo = path.split('/').pop()?.split('.')[0] ?? 'carta'
-    return { image, name: nombreArchivo }
-  })
+  .map((id) => ({
+    image: `/cards/${id}.webp`,
+    name: `Carta ${id}`,
+  }))
 
 const Board = () => {
 
   return (
     <StyledBoard>
-      {cartas.map((carta, index) => (
+      {cartasAleatorias.map((carta, index) => (
         <Card key={index} image={carta.image} name={carta.name} />
       ))}
     </StyledBoard>

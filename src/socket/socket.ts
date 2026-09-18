@@ -248,18 +248,27 @@ const emitirConAck = (evento: string, payload: unknown): Promise<unknown> => {
   const s = conectar()
 
   return new Promise((resolve, reject) => {
-    if (!s.connected) {
-      reject(new Error('Sin conexión con el servidor'))
-      return
+    const doEmit = () => {
+      s.emit(evento, payload, ((respuesta: AckResponse) => {
+        if (respuesta.ok) {
+          resolve(respuesta.data)
+        } else {
+          reject(new Error(respuesta.message || 'Error del servidor'))
+        }
+      }) as Ack)
     }
 
-    s.emit(evento, payload, ((respuesta: AckResponse) => {
-      if (respuesta.ok) {
-        resolve(respuesta.data)
-      } else {
-        reject(new Error(respuesta.message || 'Error del servidor'))
-      }
-    }) as Ack)
+    if (s.connected) {
+      doEmit()
+    } else {
+      s.once('connect', doEmit)
+      setTimeout(() => {
+        if (!s.connected) {
+          s.off('connect', doEmit)
+          reject(new Error('Tiempo de espera agotado esperando conexión con el servidor'))
+        }
+      }, 5000)
+    }
   })
 }
 
@@ -271,6 +280,14 @@ export const crearSala = async (
   alias: string,
   winModes: ModoJuego[],
 ): Promise<DatosSala> => {
+  // Limpiar el estado de cualquier partida anterior
+  ganador = null
+  partidaIniciada = false
+  tablero = null
+  cartasCantadas = []
+  notificaciones = []
+  ultimaLlamada = 0
+
   const sala = (await emitirConAck('room:create', { name, maxPlayers, alias, winModes })) as DatosSala
 
   salaActual = sala.code
@@ -283,6 +300,14 @@ export const crearSala = async (
 
 /** room:join — el backend exige alias (3-12, único en la sala). */
 export const unirseSala = async (code: string, alias: string): Promise<DatosSala> => {
+  // Limpiar el estado de cualquier partida anterior
+  ganador = null
+  partidaIniciada = false
+  tablero = null
+  cartasCantadas = []
+  notificaciones = []
+  ultimaLlamada = 0
+
   // Optimista: el broadcast room:players del join llega antes que el ack.
   salaActual = code
 
@@ -290,6 +315,8 @@ export const unirseSala = async (code: string, alias: string): Promise<DatosSala
     const respuesta = (await emitirConAck('room:join', { code, alias })) as {
       room: DatosSala
       aliases?: Record<string, string>
+      board?: TableroJugador
+      alreadyJoined?: boolean
     }
 
     // Semilla con la lista completa que devuelve el join (por si el broadcast se perdió).
@@ -304,7 +331,17 @@ export const unirseSala = async (code: string, alias: string): Promise<DatosSala
     } else {
       jugadoresPorSala.set(code, [{ accountNumber: cuentaLocal(), alias }])
     }
+    
+    // Reconexión en medio de una partida
+    if (respuesta.room.status === 'PLAYING' || respuesta.room.status === 'FINISHED') {
+      partidaIniciada = true
+      if (respuesta.board) {
+        tablero = respuesta.board
+      }
+    }
+    
     notificar()
+    notificarPartida()
 
     return respuesta.room
   } catch (error) {

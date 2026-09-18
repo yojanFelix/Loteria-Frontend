@@ -14,6 +14,7 @@ import RankingModal from './components/RankingModal/RankingModal'
 import ReglasModal from './components/ReglasModal/ReglasModal'
 import ConfirmModal from './components/ConfirmModal/ConfirmModal'
 import PerfilModal from './components/PerfilModal/PerfilModal'
+import ConfigModal from './components/ConfigModal/ConfigModal'
 import {
   abandonarSala,
   conectarSocket,
@@ -52,7 +53,7 @@ function App() {
     return hasRoom ? 'espera' : 'home'
   })
 
-  const [modalActivo, setModalActivo] = useState<'salas' | 'ranking' | 'reglas' | 'perfil' | null>(null)
+  const [modalActivo, setModalActivo] = useState<'salas' | 'ranking' | 'reglas' | 'perfil' | 'config' | null>(null)
   const [mostrarConfirmacionSalir, setMostrarConfirmacionSalir] = useState(false)
 
   const [sala, setSala] = useState<{ sala: DatosSala; modos: ModoJuego[] } | null>(() => {
@@ -261,6 +262,10 @@ function App() {
           isOpen={modalActivo === 'perfil'}
           onClose={() => setModalActivo(null)}
         />
+        
+        {modalActivo === 'config' && (
+          <ConfigModal onClose={() => setModalActivo(null)} />
+        )}
       </div>
     )
   }

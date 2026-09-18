@@ -3,7 +3,7 @@ import logo from '../../assets/logo.png'
 
 interface NavbarProps {
   onLogout: () => void;
-  onAbrirSeccion?: (seccion: 'salas' | 'ranking' | 'reglas' | 'perfil') => void;
+  onAbrirSeccion?: (seccion: 'salas' | 'ranking' | 'reglas' | 'perfil' | 'config') => void;
   onIrAlMenu?: () => void;
 }
 
@@ -54,6 +54,15 @@ function Navbar({ onLogout, onAbrirSeccion, onIrAlMenu }: NavbarProps) {
             onClick={() => onAbrirSeccion?.('reglas')}
           >
             Reglas
+          </button>
+        </li>
+        <li>
+          <button
+            type="button"
+            className="nav-btn"
+            onClick={() => onAbrirSeccion?.('config')}
+          >
+            Configuración
           </button>
         </li>
         <li>

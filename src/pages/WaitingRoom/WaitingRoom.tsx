@@ -30,7 +30,7 @@ import {
 } from '../../socket/socket';
 import { patronesCompletados } from '../../utils/patrones';
 import { imagenDeCarta } from '../../utils/cartas';
-import frijolImg from '../../assets/theme/frijol.png';
+import { MARKER_OPTIONS, getSelectedMarkers, getRandomRotation } from '../../components/ConfigModal/ConfigModal';
 import QRModal from '../../components/QRModal/QRModal';
 import { TrophyIcon, QrIcon, CopyIcon, CheckIcon } from '../../components/Icons/Icons';
 
@@ -68,10 +68,34 @@ const WaitingRoom = ({ code, hostAccountNumber, modos, onSalir }: WaitingRoomPro
     }
   });
   const [notificaciones, setNotificaciones] = useState<NotificacionJugada[]>(getNotificaciones);
+  const [selectedMarkers, setSelectedMarkers] = useState<string[]>(getSelectedMarkers());
+  const [useRandomRotation, setUseRandomRotation] = useState<boolean>(getRandomRotation());
+  
+  useEffect(() => {
+    const handleMarkersChanged = () => {
+      setSelectedMarkers(getSelectedMarkers());
+      setUseRandomRotation(getRandomRotation());
+    };
+    window.addEventListener('markersChanged', handleMarkersChanged);
+    return () => window.removeEventListener('markersChanged', handleMarkersChanged);
+  }, []);
+
   // Patrones que este cliente ya anunció; evita spam al marcar/desmarcar varias veces.
   const patronesAnunciados = useRef(new Set<string>());
 
   const { width, height } = useWindowSize();
+
+  const getMarkerImg = (cardId: number) => {
+    const markerId = selectedMarkers[cardId % selectedMarkers.length];
+    const option = MARKER_OPTIONS.find(m => m.id === markerId) || MARKER_OPTIONS[0];
+    return option.img;
+  };
+  
+  const getMarkerRotation = (cardId: number) => {
+    if (!useRandomRotation) return 18;
+    // Generar un ángulo pseudoaleatorio determinista basado en el ID de la carta (0 a 359 grados)
+    return (cardId * 101) % 360;
+  };
 
   const alternarCarta = (id: number) => {
     // Solo se puede marcar una carta que el cantor ya nombró.
@@ -98,14 +122,33 @@ const WaitingRoom = ({ code, hostAccountNumber, modos, onSalir }: WaitingRoomPro
       }
     }
 
-    // Reproducir sonido al marcar (usando un Audio base64 muy corto)
+    // Reproducir sonido al marcar (usando Web Audio API, muy ligero y sin decodificación MP3)
     if (!isMarked) {
       try {
-        // Sonido corto de 'pop' / 'click' para el frijolito
-        const popSound = new Audio('data:audio/mp3;base64,//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq');
-        popSound.volume = 0.5;
-        popSound.play().catch(() => {}); // Ignorar error si el navegador bloquea autoplay
-      } catch (e) {}
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContext) {
+          const audioCtx = new AudioContext();
+          const oscillator = audioCtx.createOscillator();
+          const gainNode = audioCtx.createGain();
+          
+          oscillator.type = 'sine';
+          // Frecuencia inicial alta que baja rápidamente (efecto 'pop' o 'gota')
+          oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+          oscillator.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.1);
+          
+          // Volumen que se desvanece rápido
+          gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+          
+          oscillator.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
+          
+          oscillator.start();
+          oscillator.stop(audioCtx.currentTime + 0.1);
+        }
+      } catch (e) {
+        // Ignorar si el navegador no soporta Web Audio API
+      }
     }
 
     try {
@@ -350,7 +393,12 @@ const WaitingRoom = ({ code, hostAccountNumber, modos, onSalir }: WaitingRoomPro
                           <span className="sin-imagen">{carta.name}</span>
                         )}
                         {marcada && (
-                          <img src={frijolImg} alt="Frijolito marcador" className="frijol-marcador" />
+                          <img 
+                            src={getMarkerImg(carta.id)} 
+                            alt="Marcador" 
+                            className="marcador-img" 
+                            style={{ '--rotacion': `${getMarkerRotation(carta.id)}deg` } as React.CSSProperties}
+                          />
                         )}
                       </div>
                       <span className="nombre-carta">{carta.name}</span>
@@ -664,31 +712,33 @@ const StyledWrapper = styled.div`
     box-shadow: 0 4px 12px rgba(216, 87, 93, 0.2);
   }
 
-  .frijol-marcador {
+  .marcador-img {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%) rotate(18deg);
-    width: clamp(26px, 45%, 44px);
-    height: auto;
-    object-fit: contain;
+    transform: translate(-50%, -50%) rotate(var(--rotacion, 18deg));
+    width: 60% !important;
+    max-width: 60px;
+    height: auto !important;
+    aspect-ratio: auto !important;
+    object-fit: contain !important;
     filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.42));
     pointer-events: none;
-    animation: frijolPop 0.24s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    animation: marcadorPop 0.24s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     z-index: 3;
   }
 
-  @keyframes frijolPop {
+  @keyframes marcadorPop {
     0% {
-      transform: translate(-50%, -50%) scale(0.3) rotate(0deg);
+      transform: translate(-50%, -50%) scale(0.3) rotate(calc(var(--rotacion, 18deg) - 18deg));
       opacity: 0;
     }
     75% {
-      transform: translate(-50%, -50%) scale(1.15) rotate(22deg);
+      transform: translate(-50%, -50%) scale(1.15) rotate(calc(var(--rotacion, 18deg) + 4deg));
       opacity: 1;
     }
     100% {
-      transform: translate(-50%, -50%) scale(1) rotate(18deg);
+      transform: translate(-50%, -50%) scale(1) rotate(var(--rotacion, 18deg));
       opacity: 1;
     }
   }
