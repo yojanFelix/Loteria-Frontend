@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import styled from 'styled-components'
 
 interface LogInProps {
@@ -7,8 +7,8 @@ interface LogInProps {
 
 const Form = ({ onLoginExitoso }: LogInProps) => {
   const [accountNumber, setAccountNumber] = useState('')
-  const [nombreInvitado, setNombreInvitado] = useState('')
-  const [modoInvitado, setModoInvitado] = useState(false)
+  const [guestName, setGuestName] = useState('')
+  const [isGuest, setIsGuest] = useState(false)
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
 
@@ -18,58 +18,33 @@ const Form = ({ onLoginExitoso }: LogInProps) => {
     setCargando(true)
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/login`, {
+      const endpoint = isGuest ? '/api/users/guest' : '/api/users/login'
+      const body = isGuest ? { name: guestName } : { accountNumber }
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ accountNumber }),
+        body: JSON.stringify(body),
       })
 
       const data = await response.json()
 
       if (!response.ok || !data.ok) {
-        setError(data.message || 'Número de cuenta inválido')
-        setCargando(false)
-        return
-      }
-      localStorage.setItem('accountNumber', accountNumber)
-      localStorage.setItem('token', data.data.token)
-      onLoginExitoso()
-    } catch {
-      setError('No se pudo conectar con el servidor')
-    } finally {
-      setCargando(false)
-    }
-  }
-
-  const manejarInvitado = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setCargando(true)
-
-    const nombre = nombreInvitado.trim() || 'Invitado'
-
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/guest`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name: nombre }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok || !data.ok) {
-        setError(data.message || 'No se pudo entrar como invitado')
+        setError(data.message || (isGuest ? 'Error al crear invitado' : 'Número de cuenta inválido'))
         setCargando(false)
         return
       }
 
-      localStorage.setItem('accountNumber', data.data.user.accountNumber)
-      localStorage.setItem('token', data.data.token)
-      localStorage.setItem('userName', nombre)
+      const returnedAccount = data.data?.user?.accountNumber || accountNumber
+      localStorage.setItem('accountNumber', returnedAccount)
+      localStorage.setItem('token', data.data?.token ?? '')
+      
+      if (data.data?.user?.name) {
+        localStorage.setItem('userName', data.data.user.name)
+      }
+      
       onLoginExitoso()
     } catch {
       setError('No se pudo conectar con el servidor')
@@ -81,19 +56,52 @@ const Form = ({ onLoginExitoso }: LogInProps) => {
   return (
     <StyledWrapper>
       <div className="form-container">
-        <h2 className="titulo-login">Ingresa tu número de cuenta</h2>
+        <h2 className="titulo-login">
+          {isGuest ? 'Entrar como Invitado' : 'Ingresa tu número de cuenta'}
+        </h2>
+        
+        <div className="tabs">
+          <button 
+            type="button" 
+            className={`tab ${!isGuest ? 'active' : ''}`}
+            onClick={() => { setIsGuest(false); setError(''); }}
+          >
+            Cuenta
+          </button>
+          <button 
+            type="button" 
+            className={`tab ${isGuest ? 'active' : ''}`}
+            onClick={() => { setIsGuest(true); setError(''); }}
+          >
+            Invitado
+          </button>
+        </div>
+
         <form className="form" onSubmit={manejarSubmit}>
           <div className="form-group">
-            <input
-              required
-              placeholder="Ej. 20230001"
-              name="accountNumber"
-              id="accountNumber"
-              type="text"
-              value={accountNumber}
-              onChange={(e) => setAccountNumber(e.target.value)}
-              autoFocus
-            />
+            {isGuest ? (
+              <input
+                required
+                placeholder="Tu apodo (ej. El Macho)"
+                name="guestName"
+                id="guestName"
+                type="text"
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
+                autoFocus
+              />
+            ) : (
+              <input
+                required
+                placeholder="Ej. 20230001"
+                name="accountNumber"
+                id="accountNumber"
+                type="text"
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)}
+                autoFocus
+              />
+            )}
           </div>
 
           {error && <p className="error-message">{error}</p>}
@@ -159,6 +167,34 @@ const StyledWrapper = styled.div`
     font-size: clamp(20px, 4.5vw, 26px);
     margin: 0;
     line-height: 1.3;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 8px;
+    background: rgba(129, 174, 183, 0.15);
+    padding: 6px;
+    border-radius: 12px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 15px;
+    color: rgba(70, 93, 107, 0.6);
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &.active {
+      background: white;
+      color: var(--color-dark, #465D6B);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
   }
 
   .form {

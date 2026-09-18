@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { ETIQUETAS_MODOS, type ModoJuego } from '../../socket/socket';
+import type { ModoJuego } from '../../types/game.types';
+import { ETIQUETAS_MODOS } from '../../utils/constants';
 
 interface CreateRoomModalProps {
   onClose: () => void;
@@ -8,7 +9,7 @@ interface CreateRoomModalProps {
 }
 
 // Mismas reglas que valida el backend (validateRoomName y validateAlias)
-const TEXTO_VALIDO = /^[\p{L}\p{N} _-]+$/u;
+const TEXTO_VALIDO = /^[\p{L}\p{N} _\-()]+$/u;
 
 const MODOS: ModoJuego[] = ['LINE', 'CORNERS', 'CENTER_2X2', 'SQUARE_2X2'];
 

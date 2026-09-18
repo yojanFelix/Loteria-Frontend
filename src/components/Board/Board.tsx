@@ -1,25 +1,14 @@
 import styled from 'styled-components'
 import Card from '../Card/Card'
 
-// Importa automáticamente todas las imágenes .webp de la carpeta cards.
-const cardImages = import.meta.glob('../../assets/cards/*.webp', {
-  eager: true,
-  import: 'default',
-}) as Record<string, string>
-
-// Busca la imagen local cuyo nombre de archivo (sin extensión) sea igual al id.
-const imagenPorId = (id: number): string | undefined => {
-  const entry = Object.entries(cardImages).find(([path]) => {
-    const nombreArchivo = path.split('/').pop()?.split('.')[0]?.trim()
-    return nombreArchivo === String(id)
-  })
-  return entry?.[1]
-}
-
-interface BoardCard {
-  id: number
-  name: string
-}
+// Generamos un arreglo aleatorio de 16 cartas para la vista previa del menú
+const cartasAleatorias = Array.from({ length: 54 }, (_, i) => i + 1)
+  .sort(() => Math.random() - 0.5)
+  .slice(0, 16)
+  .map((id) => ({
+    image: `/cards/${id}.webp`,
+    name: `Carta ${id}`,
+  }))
 
 interface BoardProps {
   board: { cards: BoardCard[] }
@@ -31,15 +20,11 @@ interface BoardProps {
 // muestra, ya no se genera nada localmente.
 const Board = ({ board, roomCode }: BoardProps) => {
   return (
-    <div>
-      <p style={{ textAlign: 'center' }}>Sala: {roomCode}</p>
-      <StyledBoard>
-        {board.cards.map((carta) => {
-          const image = imagenPorId(carta.id)
-          return <Card key={carta.id} image={image ?? ''} name={carta.name} />
-        })}
-      </StyledBoard>
-    </div>
+    <StyledBoard>
+      {cartasAleatorias.map((carta, index) => (
+        <Card key={index} image={carta.image} name={carta.name} />
+      ))}
+    </StyledBoard>
   )
 }
 
