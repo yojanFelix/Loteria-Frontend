@@ -6,6 +6,7 @@ import { notificarJugada, cantarLoteria } from '../../../../socket/socket';
 import { MARKER_OPTIONS, getSelectedMarkers, getRandomRotation } from '../../../../components/ConfigModal/ConfigModal';
 
 const DURACION_CARTA_MS = 4000;
+const DURACION_INICIAL_MS = 10000;
 
 interface GameBoardProps {
   code: string;
@@ -119,9 +120,11 @@ export default function GameBoard({ code }: GameBoardProps) {
 
   const cartaActual = cartasCantadas[cartasCantadas.length - 1] ?? null;
   const previas = cartasCantadas.slice(-4, -1);
-  const restanteMs = Math.max(0, DURACION_CARTA_MS - (ahora - ultimaLlamada));
+  const isFirstCard = cartasCantadas.length === 0;
+  const currentDuration = isFirstCard ? DURACION_INICIAL_MS : DURACION_CARTA_MS;
+  const restanteMs = Math.max(0, currentDuration - (ahora - ultimaLlamada));
   const restanteSeg = restanteMs / 1000;
-  const anchoBarra = (100 * restanteMs) / DURACION_CARTA_MS;
+  const anchoBarra = (100 * restanteMs) / currentDuration;
 
   return (
     <>
