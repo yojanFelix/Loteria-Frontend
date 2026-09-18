@@ -41,11 +41,11 @@ interface WaitingRoomProps {
   code: string;
   maxPlayers?: number;
   hostAccountNumber: string;
-  modo: ModoJuego | null;
+  modos: ModoJuego[];
   onSalir: () => void;
 }
 
-const WaitingRoom = ({ code, hostAccountNumber, modo, onSalir }: WaitingRoomProps) => {
+const WaitingRoom = ({ code, hostAccountNumber, modos, onSalir }: WaitingRoomProps) => {
   const [jugadores, setJugadores] = useState<JugadorEnSala[]>(() => getJugadoresDeSala(code));
   const [error, setError] = useState('');
   const [copiado, setCopiado] = useState(false);
@@ -258,7 +258,11 @@ const WaitingRoom = ({ code, hostAccountNumber, modo, onSalir }: WaitingRoomProp
         <div className="tablero-contenedor">
           <h2>¡La partida ha comenzado!</h2>
 
-          {modo && <p className="modo-juego">Modo de juego: {ETIQUETAS_MODOS[modo]}</p>}
+          {modos.length > 0 && (
+            <p className="modo-juego">
+              Modo de juego: {modos.map((m) => ETIQUETAS_MODOS[m]).join(', ')}
+            </p>
+          )}
 
           {ganador && (
             <div className="banner-ganador">
@@ -390,7 +394,11 @@ const WaitingRoom = ({ code, hostAccountNumber, modo, onSalir }: WaitingRoomProp
       <div className="waiting-container">
         <h2>Sala de espera</h2>
 
-        {modo && <p className="modo-juego">Modo de juego: {ETIQUETAS_MODOS[modo]}</p>}
+        {modos.length > 0 && (
+          <p className="modo-juego">
+            Modo de juego: {modos.map((m) => ETIQUETAS_MODOS[m]).join(', ')}
+          </p>
+        )}
 
         <div className="codigo-fila">
           <span className="codigo">{code}</span>
