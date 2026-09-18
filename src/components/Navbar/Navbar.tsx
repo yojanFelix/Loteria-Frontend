@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react'
 import './Navbar.css'
 import logo from '../../assets/logo.png'
+import { MenuIcon, CloseIcon } from '../Icons/Icons'
 
 interface NavbarProps {
   onLogout: () => void;
@@ -8,23 +10,58 @@ interface NavbarProps {
 }
 
 function Navbar({ onLogout, onAbrirSeccion, onIrAlMenu }: NavbarProps) {
+  const [menuAbierto, setMenuAbierto] = useState(false);
+
+  // Cerrar menú si la pantalla crece
+  useEffect(() => {
+    const checkResize = () => {
+      if (window.innerWidth > 768) {
+        setMenuAbierto(false);
+      }
+    };
+    window.addEventListener('resize', checkResize);
+    return () => window.removeEventListener('resize', checkResize);
+  }, []);
+
+  const handleBotonClic = (accion: () => void) => {
+    setMenuAbierto(false);
+    accion();
+  };
+
   return (
     <nav className="navbar">
       <button
         type="button"
         className="navbar-logo"
-        onClick={onIrAlMenu}
+        onClick={() => handleBotonClic(onIrAlMenu || (() => {}))}
         aria-label="Ir al menú principal"
       >
         <img src={logo} alt="Lotería" />
       </button>
 
-      <ul className="navbar-links">
+      <button 
+        className="mobile-menu-btn"
+        onClick={() => setMenuAbierto(true)}
+        aria-label="Abrir menú"
+      >
+        <MenuIcon size={28} color="#465D6B" />
+      </button>
+
+      {menuAbierto && (
+        <div className="mobile-overlay" onClick={() => setMenuAbierto(false)} />
+      )}
+
+      <ul className={`navbar-links ${menuAbierto ? 'open' : ''}`}>
+        <li className="mobile-close-container">
+          <button className="mobile-close-btn" onClick={() => setMenuAbierto(false)}>
+            <CloseIcon size={24} color="#465D6B" />
+          </button>
+        </li>
         <li>
           <button
             type="button"
             className="nav-btn"
-            onClick={() => onAbrirSeccion?.('perfil')}
+            onClick={() => handleBotonClic(() => onAbrirSeccion?.('perfil'))}
           >
             Perfil
           </button>
@@ -33,7 +70,7 @@ function Navbar({ onLogout, onAbrirSeccion, onIrAlMenu }: NavbarProps) {
           <button
             type="button"
             className="nav-btn"
-            onClick={() => onAbrirSeccion?.('salas')}
+            onClick={() => handleBotonClic(() => onAbrirSeccion?.('salas'))}
           >
             Salas
           </button>
@@ -42,7 +79,7 @@ function Navbar({ onLogout, onAbrirSeccion, onIrAlMenu }: NavbarProps) {
           <button
             type="button"
             className="nav-btn"
-            onClick={() => onAbrirSeccion?.('ranking')}
+            onClick={() => handleBotonClic(() => onAbrirSeccion?.('ranking'))}
           >
             Ranking
           </button>
@@ -51,7 +88,7 @@ function Navbar({ onLogout, onAbrirSeccion, onIrAlMenu }: NavbarProps) {
           <button
             type="button"
             className="nav-btn"
-            onClick={() => onAbrirSeccion?.('reglas')}
+            onClick={() => handleBotonClic(() => onAbrirSeccion?.('reglas'))}
           >
             Reglas
           </button>
@@ -60,13 +97,13 @@ function Navbar({ onLogout, onAbrirSeccion, onIrAlMenu }: NavbarProps) {
           <button
             type="button"
             className="nav-btn"
-            onClick={() => onAbrirSeccion?.('config')}
+            onClick={() => handleBotonClic(() => onAbrirSeccion?.('config'))}
           >
             Configuración
           </button>
         </li>
         <li>
-          <button className="logout-btn" onClick={onLogout}>
+          <button className="logout-btn" onClick={() => handleBotonClic(onLogout)}>
             <svg
               width="20"
               height="20"
