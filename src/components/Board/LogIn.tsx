@@ -33,8 +33,10 @@ const Form = ({ onLoginExitoso }: LogInProps) => {
       }
 
       localStorage.setItem('accountNumber', accountNumber)
+      // El token JWT lo requieren el REST protegido (/api/game/*) y el handshake del socket
+      localStorage.setItem('token', data.data?.token ?? '')
       onLoginExitoso()
-    } catch (err) {
+    } catch {
       setError('No se pudo conectar con el servidor')
     } finally {
       setCargando(false)
