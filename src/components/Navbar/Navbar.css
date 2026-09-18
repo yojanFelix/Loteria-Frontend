@@ -14,6 +14,7 @@
 
 .navbar-links {
   display: flex;
+  align-items: center;
   gap: 32px;
   list-style: none;
 }
@@ -28,6 +29,25 @@
 
 .navbar-links a:hover {
   color: #555;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  color: #212121;
+  font-family: inherit;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.logout-btn:hover {
+  color: #e0245e;
 }
 
 @media (max-width: 640px) {

@@ -3,15 +3,31 @@ import './App.css'
 import logo from './assets/logo.png'
 import LogIn from './components/Board/LogIn'
 import Navbar from './components/Navbar/Navbar'
-import Home from './pages/Home'
+import Home from './pages/Home/Home'
 
 function App() {
   const [autenticado, setAutenticado] = useState(false)
 
+const handleLogout = async () => {
+  const accountNumber = localStorage.getItem('accountNumber')
+
+  try {
+    await fetch('http://localhost:3000/api/users/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accountNumber }),
+    })
+  } catch (error) {
+    console.error('Error al cerrar sesión en el servidor:', error)
+  }
+
+  localStorage.removeItem('accountNumber')
+  setAutenticado(false)
+}
   if (autenticado) {
     return (
       <div className="app-background">
-        <Navbar />
+        <Navbar onLogout={handleLogout} />
         <Home />
       </div>
     )

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import './Home.css';
-import Input from '../components/Input/Input';
-import Button from '../components/Button/button-create';
-import CreateRoomModal from '../components/CreateRoomModal/CreateRoomModal';
+import Input from '../../components/Input/Input';
+import Button from '../../components/Button/button-create';
+import CreateRoomModal from '../../components/CreateRoomModal/CreateRoomModal';
 
 function Home() {
   const [showModal, setShowModal] = useState(false);
