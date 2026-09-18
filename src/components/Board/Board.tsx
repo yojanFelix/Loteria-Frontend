@@ -1,35 +1,45 @@
 import styled from 'styled-components'
 import Card from '../Card/Card'
 
-// Importa automáticamente todas las imágenes .webp de la carpeta cards
+// Importa automáticamente todas las imágenes .webp de la carpeta cards.
 const cardImages = import.meta.glob('../../assets/cards/*.webp', {
   eager: true,
   import: 'default',
 }) as Record<string, string>
 
-interface CartaMezclada {
-  image: string
+// Busca la imagen local cuyo nombre de archivo (sin extensión) sea igual al id.
+const imagenPorId = (id: number): string | undefined => {
+  const entry = Object.entries(cardImages).find(([path]) => {
+    const nombreArchivo = path.split('/').pop()?.split('.')[0]?.trim()
+    return nombreArchivo === String(id)
+  })
+  return entry?.[1]
+}
+
+interface BoardCard {
+  id: number
   name: string
 }
 
-// La mezcla se calcula una sola vez al cargar el módulo, no en cada render.
-// (Este componente es solo un prototipo visual: las tablas reales las da el backend.)
-const cartas: CartaMezclada[] = Object.entries(cardImages)
-  .sort(() => Math.random() - 0.5) // mezcla aleatoriamente
-  .slice(0, 16)
-  .map(([path, image]) => {
-    const nombreArchivo = path.split('/').pop()?.split('.')[0] ?? 'carta'
-    return { image, name: nombreArchivo }
-  })
+interface BoardProps {
+  board: { cards: BoardCard[] }
+  roomCode: string
+}
 
-const Board = () => {
-
+// RF-04 / RF-05: la tabla ya viene armada y validada desde el backend
+// (16 cartas, sin repetidas) al crear o unirse a la sala. Aqui solo se
+// muestra, ya no se genera nada localmente.
+const Board = ({ board, roomCode }: BoardProps) => {
   return (
-    <StyledBoard>
-      {cartas.map((carta, index) => (
-        <Card key={index} image={carta.image} name={carta.name} />
-      ))}
-    </StyledBoard>
+    <div>
+      <p style={{ textAlign: 'center' }}>Sala: {roomCode}</p>
+      <StyledBoard>
+        {board.cards.map((carta) => {
+          const image = imagenPorId(carta.id)
+          return <Card key={carta.id} image={image ?? ''} name={carta.name} />
+        })}
+      </StyledBoard>
+    </div>
   )
 }
 

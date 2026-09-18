@@ -1,407 +1,101 @@
-import { useState, useEffect } from 'react';
-import styled, { keyframes } from 'styled-components';
-import { crearSala, unirseSala, type DatosSala, type ModoJuego } from '../../socket/socket';
-import PapelPicado from '../../components/PapelPicado/PapelPicado';
-import DesertLandscape from '../../components/DesertLandscape/DesertLandscape';
-import FestiveDecorations from '../../components/FestiveDecorations/FestiveDecorations';
-import maracasImg from '../../assets/theme/maracas.png';
-import sombreroImg from '../../assets/theme/sombrero.png';
-import checkmarkImg from '../../assets/theme/checkmark.png';
-import { ArrowLeftIcon, RoomIcon, CheckIcon } from '../../components/Icons/Icons';
+import { useState } from 'react';
+import './Home.css';
+import Input from '../../components/Input/Input';
+import Button from '../../components/Button/button-create';
+import CreateRoomModal from '../../components/CreateRoomModal/CreateRoomModal';
+import { getSocket } from '../../socket';
 
 interface HomeProps {
-  onIngresarSala: (sala: DatosSala, modos: ModoJuego[]) => void;
-  initialJoinCode?: string | null;
-  salaActiva?: { sala: DatosSala } | null;
-  onVolverAPartida?: () => void;
-  onAbandonarSalaActiva?: () => void;
+  onRoomReady: (roomCode: string, board: unknown) => void;
 }
 
-type VistaHome = 'menu' | 'unirse' | 'crear';
-
-type PatronVisual = 'CHORRO' | 'EQUIS' | 'CENTRO' | 'ESQUINAS' | 'ESCUADRA' | 'DIAGONAL' | 'CUADRITO' | 'LLENA';
-
-interface PatronInfo {
-  id: PatronVisual;
-  nombre: string;
-  modoBackend: ModoJuego;
-  casillas: number[];
-}
-
-const PATRONES: PatronInfo[] = [
-  {
-    id: 'CHORRO',
-    nombre: 'Chorro',
-    modoBackend: 'LINE',
-    casillas: [1, 5, 9, 13],
-  },
-  {
-    id: 'EQUIS',
-    nombre: 'Equis',
-    modoBackend: 'LINE',
-    casillas: [0, 3, 5, 6, 9, 10, 12, 15],
-  },
-  {
-    id: 'CENTRO',
-    nombre: 'Centro',
-    modoBackend: 'CENTER_2X2',
-    casillas: [5, 6, 9, 10],
-  },
-  {
-    id: 'ESQUINAS',
-    nombre: '4 Esquinas',
-    modoBackend: 'CORNERS',
-    casillas: [0, 3, 12, 15],
-  },
-  {
-    id: 'ESCUADRA',
-    nombre: 'Escuadra',
-    modoBackend: 'LINE',
-    casillas: [0, 4, 8, 12, 13, 14, 15],
-  },
-  {
-    id: 'DIAGONAL',
-    nombre: 'Diagonal',
-    modoBackend: 'LINE',
-    casillas: [0, 5, 10, 15],
-  },
-  {
-    id: 'CUADRITO',
-    nombre: '2x2',
-    modoBackend: 'SQUARE_2X2',
-    casillas: [0, 1, 4, 5],
-  },
-  {
-    id: 'LLENA',
-    nombre: 'Llena',
-    modoBackend: 'FULL_BOARD',
-    casillas: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-  },
-];
-
-const TEXTO_VALIDO = /^[\p{L}\p{N} _-]+$/u;
-
-function Home({
-  onIngresarSala,
-  initialJoinCode,
-  salaActiva,
-  onVolverAPartida,
-  onAbandonarSalaActiva,
-}: HomeProps) {
-  const [vista, setVista] = useState<VistaHome>('menu');
-
-  // Estado para "Unirse"
-  const [codigo, setCodigo] = useState('');
-  const [aliasUnirse, setAliasUnirse] = useState('');
-
-  // Estado para "Crear"
-  const [nombreSala, setNombreSala] = useState('');
-  const [aliasCrear, setAliasCrear] = useState('');
-  const [patronesSeleccionados, setPatronesSeleccionados] = useState<PatronVisual[]>([]);
-
-  // Si viene con un código de sala desde URL o QR, abrir vista "unirse" con el código
-  useEffect(() => {
-    const codeToJoin = initialJoinCode || new URLSearchParams(window.location.search).get('join');
-    if (codeToJoin) {
-      let raw = codeToJoin.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
-      if (raw.length > 3) {
-        raw = `${raw.slice(0, 3)}-${raw.slice(3)}`;
-      }
-      setCodigo(raw);
-      setVista('unirse');
-    }
-  }, [initialJoinCode]);
-
-  // Pre-llenar alias con el nombre del usuario desde la BD / localStorage
-  useEffect(() => {
-    const storedName = localStorage.getItem('userName');
-    if (storedName) {
-      setAliasCrear(storedName);
-      setAliasUnirse(storedName);
-    } else {
-      const token = localStorage.getItem('token');
-      if (token) {
-        fetch(`${import.meta.env.VITE_API_URL}/api/users/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data?.ok && data?.data?.name) {
-              localStorage.setItem('userName', data.data.name);
-              setAliasCrear(data.data.name);
-              setAliasUnirse(data.data.name);
-            }
-          })
-          .catch((err) => {
-            console.error('Error al obtener usuario actual:', err);
-          });
-      }
-    }
-  }, []);
-
-  const togglePatron = (id: PatronVisual) => {
-    setError('');
-    setPatronesSeleccionados((prev) => {
-      if (prev.includes(id)) {
-        return prev.filter((p) => p !== id);
-      }
-      return [...prev, id];
-    });
-  };
-
-  // Estados generales
+function Home({ onRoomReady }: HomeProps) {
+  const [showModal, setShowModal] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
 
-  const handleCodigoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let raw = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
-    if (raw.length > 3) {
-      raw = `${raw.slice(0, 3)}-${raw.slice(3)}`;
-    }
-    setCodigo(raw);
+  const handleCreateRoom = async (maxPlayers: number) => {
+    setError('');
+    setCargando(true);
+
+    const socket = getSocket();
+
+    socket.emit(
+      'room:create',
+      { name: 'Sala de Loteria', maxPlayers },
+      (response: { ok: boolean; data?: any; message?: string }) => {
+        setCargando(false);
+
+        if (!response.ok) {
+          setError(response.message || 'No se pudo crear la sala');
+          return;
+        }
+
+        setShowModal(false);
+        onRoomReady(response.data.code, response.data.board);
+      }
+    );
   };
 
-  const handleUnirse = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  const handleJoinRoom = (e: React.FormEvent) => {
+    e.preventDefault();
     setError('');
-
-    const cleanCode = codigo.trim();
-    if (!/^[A-Z0-9]{3}-[A-Z0-9]{3}$/.test(cleanCode)) {
-      setError('El código debe tener el formato XXX-XXX');
-      return;
-    }
-
-    const cleanAlias = aliasUnirse.trim();
-    if (cleanAlias.length < 3 || cleanAlias.length > 30) {
-      setError('El alias debe tener entre 3 y 30 caracteres');
-      return;
-    }
-    if (!TEXTO_VALIDO.test(cleanAlias)) {
-      setError('El alias solo puede tener letras, números, espacios y guiones');
-      return;
-    }
-
     setCargando(true);
-    try {
-      const sala = await unirseSala(cleanCode, cleanAlias);
-      onIngresarSala(sala, sala.winModes ?? []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo unir a la sala');
-    } finally {
-      setCargando(false);
-    }
-  };
 
-  const handleCrear = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setError('');
+    const socket = getSocket();
 
-    const cleanNombre = (nombreSala.trim() || 'Sala Mexicana');
-    if (cleanNombre.length < 3 || cleanNombre.length > 30) {
-      setError('El nombre de la sala debe tener entre 3 y 30 caracteres');
-      return;
-    }
-    if (!TEXTO_VALIDO.test(cleanNombre)) {
-      setError('El nombre solo puede tener letras, números y espacios');
-      return;
-    }
+    socket.emit(
+      'room:join',
+      { code: joinCode },
+      (response: { ok: boolean; data?: any; message?: string }) => {
+        setCargando(false);
 
-    const cleanAlias = aliasCrear.trim();
-    if (cleanAlias.length < 3 || cleanAlias.length > 30) {
-      setError('Tu alias debe tener entre 3 y 30 caracteres');
-      return;
-    }
-    if (!TEXTO_VALIDO.test(cleanAlias)) {
-      setError('El alias solo puede tener letras, números y espacios');
-      return;
-    }
+        if (!response.ok) {
+          setError(response.message || 'No se pudo unir a la sala');
+          return;
+        }
 
-    if (patronesSeleccionados.length === 0) {
-      setError('Debes seleccionar al menos un patrón para ganar');
-      return;
-    }
-
-    // Cada patrón visual seleccionado aporta un modo de victoria al backend.
-    // Varios patrones (p. ej. Chorro y Equis) pueden mapear al mismo modo; se deduplica.
-    const modos = [...new Set(
-      PATRONES
-        .filter((p) => patronesSeleccionados.includes(p.id))
-        .map((p) => p.modoBackend)
-    )];
-
-    setCargando(true);
-    try {
-      const sala = await crearSala(cleanNombre, 100, cleanAlias, modos);
-      onIngresarSala(sala, modos);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo crear la sala');
-    } finally {
-      setCargando(false);
-    }
+        onRoomReady(response.data.room.code, response.data.board);
+      }
+    );
   };
 
   return (
-    <Container>
-      {/* Cenefa superior festiva de papel picado */}
-      <PapelPicado />
-      <FestiveDecorations variant="lobby" />
+    <>
+      <div className="titulo">
+        <h1 className="text">Loteria mexicana!</h1>
+      </div>
+      <div className="text-wrapper">
+        <h3 className="text">Ingresa el codigo de la sala</h3>
+      </div>
 
-      {/* VISTA 1: MENÚ PRINCIPAL (IMAGEN 2) */}
-      {vista === 'menu' && (
-        <MenuContent>
-          <TituloPrincipal>Lotería Mexicana</TituloPrincipal>
+      <form onSubmit={handleJoinRoom}>
+        <div className="content-wrapper">
+          <Input value={joinCode} onChange={setJoinCode} />
+        </div>
+        <div className="button-wrapper">
+          <button type="submit" disabled={cargando || !joinCode}>
+            {cargando ? 'Uniendo...' : 'Unirse'}
+          </button>
+        </div>
+      </form>
 
-          <IlustracionWrapper>
-            <div className="vignette-emblema">
-              <img src={sombreroImg} alt="" className="vignette-sombrero" />
-              <img src={maracasImg} alt="Maracas mexicanas" className="maracas-img" />
-            </div>
-          </IlustracionWrapper>
+      <div className="button-wrapper">
+        <Button onClick={() => setShowModal(true)} />
+      </div>
 
-          {salaActiva && (
-            <PartidaActivaCard>
-              <PartidaActivaHeader>
-                <RoomIcon size={20} color="#D8575D" />
-                <PartidaActivaTitulo>Sala activa</PartidaActivaTitulo>
-              </PartidaActivaHeader>
-              <PartidaActivaTexto>
-                Tienes una sesión en la sala <strong>{salaActiva.sala.name}</strong> (<code>{salaActiva.sala.code}</code>)
-              </PartidaActivaTexto>
-              <PartidaActivaAcciones>
-                <BotonVolverPartida type="button" onClick={onVolverAPartida}>
-                  <CheckIcon size={16} />
-                  <span>Volver a la partida</span>
-                </BotonVolverPartida>
-                {onAbandonarSalaActiva && (
-                  <BotonAbandonarPartida type="button" onClick={onAbandonarSalaActiva}>
-                    Abandonar
-                  </BotonAbandonarPartida>
-                )}
-              </PartidaActivaAcciones>
-            </PartidaActivaCard>
-          )}
-
-          <MenuBotones>
-            <BotonRojo onClick={() => { setError(''); setVista('unirse'); }}>
-              Unirse a una sala
-            </BotonRojo>
-
-            <BotonAzul onClick={() => { setError(''); setVista('crear'); }}>
-              Crear una sala
-            </BotonAzul>
-          </MenuBotones>
-        </MenuContent>
+      {error && (
+        <div className="text-wrapper">
+          <p style={{ color: '#e0245e' }}>{error}</p>
+        </div>
       )}
 
-      {/* VISTA 2: UNIRSE A UNA SALA (IMAGEN 3) */}
-      {vista === 'unirse' && (
-        <FormContent onSubmit={handleUnirse}>
-          <BotonVolver type="button" onClick={() => { setError(''); setVista('menu'); }}>
-            <ArrowLeftIcon size={16} />
-            <span>Volver al menú</span>
-          </BotonVolver>
-
-          <TituloSeccion>
-            Ingresa el código de<br />la sala:
-          </TituloSeccion>
-
-          <CamposWrapper>
-            <InputCodigo
-              type="text"
-              placeholder="000-000"
-              maxLength={7}
-              value={codigo}
-              onChange={handleCodigoChange}
-              autoFocus
-            />
-
-            <InputAlias
-              type="text"
-              placeholder="Tu alias o nombre"
-              maxLength={30}
-              value={aliasUnirse}
-              onChange={(e) => setAliasUnirse(e.target.value)}
-            />
-          </CamposWrapper>
-
-          {error && <MensajeError>{error}</MensajeError>}
-
-          <BotonRojo type="submit" disabled={cargando}>
-            {cargando ? 'Entrando...' : 'Unirse'}
-          </BotonRojo>
-        </FormContent>
-      )}
-
-      {/* VISTA 3: CREAR UNA SALA (IMAGEN 4) */}
-      {vista === 'crear' && (
-        <CrearContent onSubmit={handleCrear}>
-          <BotonVolver type="button" onClick={() => { setError(''); setVista('menu'); }}>
-            <ArrowLeftIcon size={16} />
-            <span>Volver al menú</span>
-          </BotonVolver>
-
-          <TituloSeccion>Crear una sala</TituloSeccion>
-
-          <CamposCrearRow>
-            <InputPequeno
-              type="text"
-              placeholder="Nombre de la sala (opcional)"
-              maxLength={30}
-              value={nombreSala}
-              onChange={(e) => setNombreSala(e.target.value)}
-            />
-            <InputPequeno
-              type="text"
-              placeholder="Tu alias o nombre"
-              maxLength={30}
-              value={aliasCrear}
-              onChange={(e) => setAliasCrear(e.target.value)}
-              required
-            />
-          </CamposCrearRow>
-
-          <SubtituloLlamadas>Patrones con premio:</SubtituloLlamadas>
-          <TextoAyudaPatrones>Selecciona las combinaciones ganadoras</TextoAyudaPatrones>
-
-          {/* Grilla de los 8 patrones visuales de victoria */}
-          <GrillaPatrones>
-            {PATRONES.map((patron) => {
-              const seleccionado = patronesSeleccionados.includes(patron.id);
-              return (
-                <TarjetaPatron
-                  key={patron.id}
-                  type="button"
-                  onClick={() => togglePatron(patron.id)}
-                  aria-pressed={seleccionado}
-                >
-                  <MiniCuadricula>
-                    {Array.from({ length: 16 }).map((_, i) => (
-                      <Celda key={i}>
-                        {patron.casillas.includes(i) && <FichaCirculo />}
-                      </Celda>
-                    ))}
-                    {seleccionado && (
-                      <CheckPincelada>
-                        <img src={checkmarkImg} alt="Seleccionado" />
-                      </CheckPincelada>
-                    )}
-                  </MiniCuadricula>
-                  <NombrePatron>
-                    {patron.nombre}
-                  </NombrePatron>
-                </TarjetaPatron>
-              );
-            })}
-          </GrillaPatrones>
-
-          {error && <MensajeError>{error}</MensajeError>}
-
-          <BotonCrearFinal type="submit" disabled={cargando}>
-            {cargando ? 'Creando sala...' : 'Crear'}
-          </BotonCrearFinal>
-        </CrearContent>
+      {showModal && (
+        <CreateRoomModal
+          onClose={() => setShowModal(false)}
+          onCreate={(selectedPlayers) => handleCreateRoom(selectedPlayers)}
+        />
       )}
 
       {/* Paisaje desértico en la parte inferior */}
