@@ -2,39 +2,25 @@ import { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import Confetti from 'react-confetti';
 import { useWindowSize } from 'react-use';
+import { useGameStore } from '../../store/gameStore';
 import {
   abandonarSala,
   cantarLoteria,
-  ETIQUETAS_MODOS,
-  etiquetaDePatron,
-  getCartasCantadas,
-  getGanador,
-  getJugadoresDeSala,
-  getNotificaciones,
-  getPartidaIniciada,
-  getTablero,
-  getUltimaLlamada,
   iniciarPartida,
   notificarJugada,
   sincronizarEstadoPartida,
-  suscribirCartas,
-  suscribirJugadores,
-  suscribirNotificaciones,
-  suscribirPartida,
-  type Carta,
-  type GanadorInfo,
-  type JugadorEnSala,
-  type ModoJuego,
-  type NotificacionJugada,
-  type TableroJugador,
 } from '../../socket/socket';
+import {
+  ETIQUETAS_MODOS,
+  etiquetaDePatron
+} from '../../utils/constants'; // Wait, these were in socket.ts before?
 import { patronesCompletados } from '../../utils/patrones';
 import { imagenDeCarta } from '../../utils/cartas';
 import { MARKER_OPTIONS, getSelectedMarkers, getRandomRotation } from '../../components/ConfigModal/ConfigModal';
 import QRModal from '../../components/QRModal/QRModal';
 import { TrophyIcon, QrIcon, CopyIcon, CheckIcon } from '../../components/Icons/Icons';
+import type { ModoJuego } from '../../types/game.types';
 
-// El backend canta una carta nueva cada 4 segundos (CALL_INTERVAL_MS del servidor)
 const DURACION_CARTA_MS = 4000;
 
 interface WaitingRoomProps {
@@ -46,19 +32,24 @@ interface WaitingRoomProps {
 }
 
 const WaitingRoom = ({ code, hostAccountNumber, modos, onSalir }: WaitingRoomProps) => {
-  const [jugadores, setJugadores] = useState<JugadorEnSala[]>(() => getJugadoresDeSala(code));
+  // Estado global mediante Zustand
+  const { 
+    jugadoresEnSala: jugadores,
+    partidaIniciada,
+    tablero,
+    cartasCantadas,
+    ganador,
+    notificaciones,
+    ultimaLlamada
+  } = useGameStore();
+
   const [error, setError] = useState('');
   const [copiado, setCopiado] = useState(false);
   const [mostrarQR, setMostrarQR] = useState(false);
   const [iniciando, setIniciando] = useState(false);
   const [cantando, setCantando] = useState(false);
-  const [partidaIniciada, setPartidaIniciada] = useState(getPartidaIniciada);
-  const [tablero, setTablero] = useState<TableroJugador | null>(getTablero);
-  const [cartasCantadas, setCartasCantadas] = useState<Carta[]>(getCartasCantadas);
-  const [ganador, setGanador] = useState<GanadorInfo | null>(getGanador);
-  // El reloj del efecto lo actualiza cada 100 ms; arranca en 0 (sin impurezas en render)
   const [ahora, setAhora] = useState(0);
-  // El usuario marca sus cartas manualmente cuando las canta el cantor (con caché local)
+  
   const [marcadas, setMarcadas] = useState<number[]>(() => {
     try {
       const guardadas = localStorage.getItem(`marcadas_${code}`);
@@ -67,7 +58,7 @@ const WaitingRoom = ({ code, hostAccountNumber, modos, onSalir }: WaitingRoomPro
       return [];
     }
   });
-  const [notificaciones, setNotificaciones] = useState<NotificacionJugada[]>(getNotificaciones);
+
   const [selectedMarkers, setSelectedMarkers] = useState<string[]>(getSelectedMarkers());
   const [useRandomRotation, setUseRandomRotation] = useState<boolean>(getRandomRotation());
   
@@ -80,9 +71,7 @@ const WaitingRoom = ({ code, hostAccountNumber, modos, onSalir }: WaitingRoomPro
     return () => window.removeEventListener('markersChanged', handleMarkersChanged);
   }, []);
 
-  // Patrones que este cliente ya anunció; evita spam al marcar/desmarcar varias veces.
   const patronesAnunciados = useRef(new Set<string>());
-
   const { width, height } = useWindowSize();
 
   const getMarkerImg = (cardId: number) => {
@@ -93,12 +82,10 @@ const WaitingRoom = ({ code, hostAccountNumber, modos, onSalir }: WaitingRoomPro
   
   const getMarkerRotation = (cardId: number) => {
     if (!useRandomRotation) return 18;
-    // Generar un ángulo pseudoaleatorio determinista basado en el ID de la carta (0 a 359 grados)
     return (cardId * 101) % 360;
   };
 
   const alternarCarta = (id: number) => {
-    // Solo se puede marcar una carta que el cantor ya nombró.
     const yaCantada = cartasCantadas.some((carta) => carta.id === id);
     if (!yaCantada) {
       setError('No puedes marcar esa carta: aún no ha sido cantada');
@@ -109,8 +96,6 @@ const WaitingRoom = ({ code, hostAccountNumber, modos, onSalir }: WaitingRoomPro
     const isMarked = marcadas.includes(id);
     const nuevo = isMarked ? marcadas.filter((m) => m !== id) : [...marcadas, id];
 
-    // Al marcar, avisamos al servidor de TODOS los patrones que quedaron
-    // completos con esta jugada (línea, esquinas, etc.), sin importar el modo.
     if (!isMarked && tablero) {
       const completados = patronesCompletados(tablero.cards, nuevo);
       for (const pattern of completados) {
@@ -122,7 +107,6 @@ const WaitingRoom = ({ code, hostAccountNumber, modos, onSalir }: WaitingRoomPro
       }
     }
 
-    // Reproducir sonido al marcar (usando Web Audio API, muy ligero y sin decodificación MP3)
     if (!isMarked) {
       try {
         const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
@@ -132,11 +116,9 @@ const WaitingRoom = ({ code, hostAccountNumber, modos, onSalir }: WaitingRoomPro
           const gainNode = audioCtx.createGain();
           
           oscillator.type = 'sine';
-          // Frecuencia inicial alta que baja rápidamente (efecto 'pop' o 'gota')
           oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
           oscillator.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.1);
           
-          // Volumen que se desvanece rápido
           gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
           gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
           
@@ -147,71 +129,35 @@ const WaitingRoom = ({ code, hostAccountNumber, modos, onSalir }: WaitingRoomPro
           oscillator.stop(audioCtx.currentTime + 0.1);
         }
       } catch (e) {
-        // Ignorar si el navegador no soporta Web Audio API
       }
     }
 
     try {
       localStorage.setItem(`marcadas_${code}`, JSON.stringify(nuevo));
-    } catch {
-      // Ignorar fallo de almacenamiento
-    }
+    } catch {}
     setMarcadas(nuevo);
   };
 
-  // El backend emite room:players a la sala en cada cambio; aquí solo nos
-  // suscribimos. La lista inicial ya está sembrada en el store del socket.
+  // Reproducir audio cuando sale una carta nueva
   useEffect(() => {
-    const cancelar = suscribirJugadores(() => setJugadores(getJugadoresDeSala(code)));
-    return cancelar;
-  }, [code]);
-
-  // game:started (broadcast a la sala) y game:board (canal personal) actualizan
-  // el store del socket; aquí solo reaccionamos a los cambios.
-  useEffect(() => {
-    const cancelar = suscribirPartida(() => {
-      setPartidaIniciada(getPartidaIniciada());
-      setTablero(getTablero());
-      setGanador(getGanador());
-    });
-    return cancelar;
-  }, []);
-
-  // card:called actualiza el historial; nos suscribimos para re-renderizar.
-  useEffect(() => {
-    const cancelar = suscribirCartas(() => {
-      const nuevas = getCartasCantadas();
-      setCartasCantadas(nuevas);
-      
-      // Reproducir audio con la API de síntesis de voz
-      if (nuevas.length > 0) {
-        const ultimaCarta = nuevas[nuevas.length - 1];
-        if (ultimaCarta) {
-          window.speechSynthesis.cancel(); // Detener cualquier audio previo
-          const speech = new SpeechSynthesisUtterance(ultimaCarta.name);
-          speech.lang = 'es-MX';
-          speech.rate = 1.1;
-          window.speechSynthesis.speak(speech);
-        }
+    if (cartasCantadas.length > 0) {
+      const ultimaCarta = cartasCantadas[cartasCantadas.length - 1];
+      if (ultimaCarta) {
+        window.speechSynthesis.cancel();
+        const speech = new SpeechSynthesisUtterance(ultimaCarta.name);
+        speech.lang = 'es-MX';
+        speech.rate = 1.1;
+        window.speechSynthesis.speak(speech);
       }
-    });
-    return cancelar;
-  }, []);
+    }
+  }, [cartasCantadas]);
 
-  // Feed de notificaciones de jugadas: llegan por broadcast room:notification.
-  useEffect(() => {
-    const cancelar = suscribirNotificaciones(setNotificaciones);
-    return cancelar;
-  }, []);
-
-  // Al entrar a la partida, sincroniza el historial con el servidor (game:state).
   useEffect(() => {
     if (partidaIniciada) {
       void sincronizarEstadoPartida(code);
     }
   }, [partidaIniciada, code]);
 
-  // Reloj de la UI: cada 100 ms para el contador de la carta actual.
   useEffect(() => {
     const intervalo = setInterval(() => setAhora(Date.now()), 100);
     return () => clearInterval(intervalo);
@@ -288,7 +234,7 @@ const WaitingRoom = ({ code, hostAccountNumber, modos, onSalir }: WaitingRoomPro
   if (partidaIniciada) {
     const cartaActual = cartasCantadas[cartasCantadas.length - 1] ?? null;
     const previas = cartasCantadas.slice(-4, -1); // las 3 anteriores a la actual
-    const restanteMs = Math.max(0, DURACION_CARTA_MS - (ahora - getUltimaLlamada()));
+    const restanteMs = Math.max(0, DURACION_CARTA_MS - (ahora - ultimaLlamada));
     const restanteSeg = restanteMs / 1000;
     const anchoBarra = (100 * restanteMs) / DURACION_CARTA_MS;
     const aliasGanador = ganador

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { CloseIcon, RoomIcon, RefreshIcon, UsersIcon } from '../Icons/Icons';
-import { pedirSalasDisponibles, suscribirSalas, type ResumenSala } from '../../socket/socket';
+import { pedirSalas } from '../../socket/socket';
+import { useGameStore } from '../../store/gameStore';
 
 interface SalasModalProps {
   isOpen: boolean;
@@ -10,15 +11,14 @@ interface SalasModalProps {
 }
 
 export const SalasModal: React.FC<SalasModalProps> = ({ isOpen, onClose, onUnirse }) => {
-  const [salas, setSalas] = useState<ResumenSala[]>([]);
+  const salas = useGameStore(state => state.ultimasSalas);
   const [cargando, setCargando] = useState(true);
   const [codigoUniendo, setCodigoUniendo] = useState<string | null>(null);
 
   const cargarSalas = async () => {
     setCargando(true);
     try {
-      const lista = await pedirSalasDisponibles();
-      setSalas(lista);
+      await pedirSalas();
     } catch (err) {
       console.error('Error cargando salas:', err);
     } finally {
@@ -27,17 +27,9 @@ export const SalasModal: React.FC<SalasModalProps> = ({ isOpen, onClose, onUnirs
   };
 
   useEffect(() => {
-    if (!isOpen) return;
-
-    cargarSalas();
-    const desuscribir = suscribirSalas((nuevasSalas) => {
-      setSalas(nuevasSalas);
-      setCargando(false);
-    });
-
-    return () => {
-      desuscribir();
-    };
+    if (isOpen) {
+      void cargarSalas();
+    }
   }, [isOpen]);
 
   const handleUnirse = async (code: string) => {

@@ -1,21 +1,16 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
-import { crearSala, unirseSala, type DatosSala, type ModoJuego } from '../../socket/socket';
+import { crearSala, unirseSala, type ModoJuego } from '../../socket/socket';
 import PapelPicado from '../../components/PapelPicado/PapelPicado';
 import DesertLandscape from '../../components/DesertLandscape/DesertLandscape';
 import FestiveDecorations from '../../components/FestiveDecorations/FestiveDecorations';
 import maracasImg from '../../assets/theme/maracas.png';
 import sombreroImg from '../../assets/theme/sombrero.png';
 import checkmarkImg from '../../assets/theme/checkmark.png';
-import { ArrowLeftIcon, RoomIcon, CheckIcon } from '../../components/Icons/Icons';
+import { ArrowLeftIcon } from '../../components/Icons/Icons';
 
-interface HomeProps {
-  onIngresarSala: (sala: DatosSala, modos: ModoJuego[]) => void;
-  initialJoinCode?: string | null;
-  salaActiva?: { sala: DatosSala } | null;
-  onVolverAPartida?: () => void;
-  onAbandonarSalaActiva?: () => void;
-}
+
 
 type VistaHome = 'menu' | 'unirse' | 'crear';
 
@@ -81,13 +76,9 @@ const PATRONES: PatronInfo[] = [
 
 const TEXTO_VALIDO = /^[\p{L}\p{N} _-]+$/u;
 
-function Home({
-  onIngresarSala,
-  initialJoinCode,
-  salaActiva,
-  onVolverAPartida,
-  onAbandonarSalaActiva,
-}: HomeProps) {
+function Home() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [vista, setVista] = useState<VistaHome>('menu');
 
   // Estado para "Unirse"
@@ -101,7 +92,7 @@ function Home({
 
   // Si viene con un código de sala desde URL o QR, abrir vista "unirse" con el código
   useEffect(() => {
-    const codeToJoin = initialJoinCode || new URLSearchParams(window.location.search).get('join');
+    const codeToJoin = searchParams.get('join');
     if (codeToJoin) {
       let raw = codeToJoin.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
       if (raw.length > 3) {
@@ -110,7 +101,7 @@ function Home({
       setCodigo(raw);
       setVista('unirse');
     }
-  }, [initialJoinCode]);
+  }, [searchParams]);
 
   // Pre-llenar alias con el nombre del usuario desde la BD / localStorage
   useEffect(() => {
@@ -186,7 +177,7 @@ function Home({
     setCargando(true);
     try {
       const sala = await unirseSala(cleanCode, cleanAlias);
-      onIngresarSala(sala, sala.winModes ?? []);
+      navigate(`/room/${sala.code}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo unir a la sala');
     } finally {
@@ -234,7 +225,7 @@ function Home({
     setCargando(true);
     try {
       const sala = await crearSala(cleanNombre, 100, cleanAlias, modos);
-      onIngresarSala(sala, modos);
+      navigate(`/room/${sala.code}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear la sala');
     } finally {
@@ -259,29 +250,6 @@ function Home({
               <img src={maracasImg} alt="Maracas mexicanas" className="maracas-img" />
             </div>
           </IlustracionWrapper>
-
-          {salaActiva && (
-            <PartidaActivaCard>
-              <PartidaActivaHeader>
-                <RoomIcon size={20} color="#D8575D" />
-                <PartidaActivaTitulo>Sala activa</PartidaActivaTitulo>
-              </PartidaActivaHeader>
-              <PartidaActivaTexto>
-                Tienes una sesión en la sala <strong>{salaActiva.sala.name}</strong> (<code>{salaActiva.sala.code}</code>)
-              </PartidaActivaTexto>
-              <PartidaActivaAcciones>
-                <BotonVolverPartida type="button" onClick={onVolverAPartida}>
-                  <CheckIcon size={16} />
-                  <span>Volver a la partida</span>
-                </BotonVolverPartida>
-                {onAbandonarSalaActiva && (
-                  <BotonAbandonarPartida type="button" onClick={onAbandonarSalaActiva}>
-                    Abandonar
-                  </BotonAbandonarPartida>
-                )}
-              </PartidaActivaAcciones>
-            </PartidaActivaCard>
-          )}
 
           <MenuBotones>
             <BotonRojo onClick={() => { setError(''); setVista('unirse'); }}>
@@ -846,105 +814,6 @@ const BotonCrearFinal = styled(BotonBase)`
 
   &:hover {
     box-shadow: 0 7px 20px rgba(70, 93, 107, 0.5);
-  }
-`;
-
-const PartidaActivaCard = styled.div`
-  background: #ffffff;
-  border: 2px solid rgba(216, 87, 93, 0.35);
-  border-radius: 16px;
-  padding: 16px 20px;
-  max-width: 380px;
-  width: 100%;
-  margin-bottom: 20px;
-  box-shadow: 0 6px 18px rgba(216, 87, 93, 0.12);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 8px;
-`;
-
-const PartidaActivaHeader = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const PartidaActivaTitulo = styled.h4`
-  margin: 0;
-  font-family: var(--font-theme, 'Pattaya', cursive);
-  font-size: 20px;
-  color: var(--color-dark, #465D6B);
-`;
-
-const PartidaActivaTexto = styled.p`
-  margin: 0;
-  font-family: var(--font-sans, system-ui);
-  font-size: 13.5px;
-  color: rgba(70, 93, 107, 0.85);
-
-  strong {
-    color: var(--color-dark, #465D6B);
-  }
-
-  code {
-    background: rgba(216, 87, 93, 0.1);
-    color: var(--color-red, #D8575D);
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-weight: 700;
-  }
-`;
-
-const PartidaActivaAcciones = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 6px;
-  width: 100%;
-`;
-
-const BotonVolverPartida = styled.button`
-  flex: 1;
-  padding: 10px 14px;
-  background-color: var(--color-red, #D8575D);
-  color: #ffffff;
-  border: none;
-  border-radius: 10px;
-  font-family: var(--font-sans, system-ui);
-  font-size: 13.5px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background-color: #b94247;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(216, 87, 93, 0.35);
-  }
-`;
-
-const BotonAbandonarPartida = styled.button`
-  padding: 10px 14px;
-  background: transparent;
-  color: rgba(70, 93, 107, 0.7);
-  border: 1px solid rgba(70, 93, 107, 0.25);
-  border-radius: 10px;
-  font-family: var(--font-sans, system-ui);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    color: var(--color-red, #D8575D);
-    border-color: rgba(216, 87, 93, 0.4);
-    background: rgba(216, 87, 93, 0.05);
   }
 `;
 

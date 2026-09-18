@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { ETIQUETAS_MODOS, type ModoJuego } from '../../socket/socket';
+import type { ModoJuego } from '../../types/game.types';
+import { ETIQUETAS_MODOS } from '../../utils/constants';
 
 interface CreateRoomModalProps {
   onClose: () => void;
