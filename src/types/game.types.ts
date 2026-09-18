@@ -1,4 +1,12 @@
-export type ModoJuego = 'LINE' | 'CORNERS' | 'CENTER_2X2' | 'SQUARE_2X2' | 'FULL_BOARD';
+export type ModoJuego =
+  | 'LINE'       // chorro: fila o columna, en cualquier posicion
+  | 'DIAGONAL'
+  | 'ESCUADRA'
+  | 'EQUIS'
+  | 'CORNERS'
+  | 'CENTER_2X2'
+  | 'SQUARE_2X2' // cuadrito: en cualquier posicion
+  | 'FULL_BOARD';
 
 export interface JugadorEnSala {
   accountNumber: string;

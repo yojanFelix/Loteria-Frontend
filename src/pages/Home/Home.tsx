@@ -33,7 +33,7 @@ const PATRONES: PatronInfo[] = [
   {
     id: 'EQUIS',
     nombre: 'Equis',
-    modoBackend: 'LINE',
+    modoBackend: 'EQUIS',
     casillas: [0, 3, 5, 6, 9, 10, 12, 15],
   },
   {
@@ -51,13 +51,13 @@ const PATRONES: PatronInfo[] = [
   {
     id: 'ESCUADRA',
     nombre: 'Escuadra',
-    modoBackend: 'LINE',
+    modoBackend: 'ESCUADRA',
     casillas: [0, 4, 8, 12, 13, 14, 15],
   },
   {
     id: 'DIAGONAL',
     nombre: 'Diagonal',
-    modoBackend: 'LINE',
+    modoBackend: 'DIAGONAL',
     casillas: [0, 5, 10, 15],
   },
   {
