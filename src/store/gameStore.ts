@@ -73,10 +73,16 @@ export const useGameStore = create<GameState>((set) => ({
   
   startGame: () => set({ partidaIniciada: true }),
   
-  addCartaCantada: (carta) => set((state) => ({ 
-    cartasCantadas: [...state.cartasCantadas, carta],
-    ultimaLlamada: Date.now()
-  })),
+  addCartaCantada: (carta) => set((state) => {
+    // Prevenir duplicados (común en recargas de HMR o React Strict Mode)
+    if (state.cartasCantadas.some(c => c.id === carta.id)) {
+      return state;
+    }
+    return { 
+      cartasCantadas: [...state.cartasCantadas, carta],
+      ultimaLlamada: Date.now()
+    };
+  }),
   
   setCartasHistorial: (cartas) => set({ 
     cartasCantadas: cartas,
