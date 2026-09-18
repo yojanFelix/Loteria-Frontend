@@ -16,7 +16,7 @@ const Form = ({ onLoginExitoso }: LogInProps) => {
     setCargando(true)
 
     try {
-      const response = await fetch('http://localhost:3000/api/users/login', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -34,7 +34,7 @@ const Form = ({ onLoginExitoso }: LogInProps) => {
       localStorage.setItem('accountNumber', accountNumber)
       localStorage.setItem('token', data.data.token)
       onLoginExitoso()
-    } catch (err) {
+    } catch {
       setError('No se pudo conectar con el servidor')
     } finally {
       setCargando(false)
@@ -44,24 +44,25 @@ const Form = ({ onLoginExitoso }: LogInProps) => {
   return (
     <StyledWrapper>
       <div className="form-container">
-        <div className="logo-container">Ingresa tu numero de cuenta</div>
+        <h2 className="titulo-login">Ingresa tu número de cuenta</h2>
         <form className="form" onSubmit={manejarSubmit}>
           <div className="form-group">
             <input
               required
-              placeholder="12345678"
+              placeholder="Ej. 20230001"
               name="accountNumber"
               id="accountNumber"
               type="text"
               value={accountNumber}
               onChange={(e) => setAccountNumber(e.target.value)}
+              autoFocus
             />
           </div>
 
           {error && <p className="error-message">{error}</p>}
 
           <button type="submit" className="form-submit-btn" disabled={cargando}>
-            {cargando ? 'Verificando...' : 'Ingresar'}
+            {cargando ? 'Verificando...' : 'Ingresar a jugar'}
           </button>
         </form>
       </div>
@@ -70,95 +71,108 @@ const Form = ({ onLoginExitoso }: LogInProps) => {
 }
 
 const StyledWrapper = styled.div`
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 10px 16px;
+
   .form-container {
-    max-width: 400px;
-    background-color: #fff;
-    padding: 32px 24px;
-    font-size: 14px;
-    font-family: inherit;
-    color: #212121;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    box-sizing: border-box;
-    border-radius: 10px;
-    box-shadow:
-      0px 0px 3px rgba(0, 0, 0, 0.084),
-      0px 2px 3px rgba(0, 0, 0, 0.168);
-  }
-
-  .form-container button:active {
-    scale: 0.95;
-  }
-
-  .form-container .logo-container {
-    text-align: center;
-    font-weight: 600;
-    font-size: 18px;
-  }
-
-  .form-container .form {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .form-container .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .form-container .form-group input {
     width: 100%;
-    padding: 12px 16px;
-    border-radius: 6px;
-    font-family: inherit;
-    border: 1px solid #141414;
+    max-width: 420px;
+    background-color: #ffffff;
+    padding: 36px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    border-radius: 18px;
+    border: 2px solid var(--color-blue, #81AEB7);
+    box-shadow: 0 8px 24px rgba(70, 93, 107, 0.12);
   }
 
-  .form-container .form-group input::placeholder {
-    opacity: 0.5;
+  .titulo-login {
+    font-family: var(--font-theme);
+    color: var(--color-dark, #465D6B);
+    text-align: center;
+    font-size: clamp(20px, 4.5vw, 26px);
+    margin: 0;
+    line-height: 1.3;
   }
 
-  .form-container .form-group input:focus {
-    outline: none;
-    border-color: #1778f2;
+  .form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .form-group input {
+    width: 100%;
+    height: 54px;
+    padding: 0 16px;
+    border-radius: 12px;
+    font-family: var(--font-sans);
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+    letter-spacing: 1px;
+    border: 1.5px solid rgba(70, 93, 107, 0.3);
+    color: var(--color-dark, #465D6B);
+    background-color: #fffef8;
+    transition: all 0.2s ease;
+
+    &::placeholder {
+      font-weight: 400;
+      color: rgba(70, 93, 107, 0.45);
+    }
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-red, #D8575D);
+      box-shadow: 0 0 0 3px rgba(216, 87, 93, 0.2);
+    }
   }
 
   .error-message {
-    color: #e0245e;
-    font-size: 13px;
+    color: var(--color-red, #D8575D);
+    font-weight: 600;
+    font-size: 14px;
     margin: 0;
     text-align: center;
+    background-color: rgba(216, 87, 93, 0.08);
+    padding: 8px 12px;
+    border-radius: 8px;
   }
 
-  .form-container .form-submit-btn {
+  .form-submit-btn {
     display: flex;
     justify-content: center;
     align-items: center;
-    font-family: inherit;
-    color: #fff;
-    background-color: #212121;
-    border: none;
     width: 100%;
-    padding: 12px 16px;
-    font-size: inherit;
-    gap: 8px;
-    margin: 12px 0;
+    min-height: 54px;
+    font-family: var(--font-theme);
+    font-size: clamp(17px, 4vw, 20px);
+    color: #ffffff;
+    background-color: var(--color-red, #D8575D);
+    border: none;
+    border-radius: 14px;
     cursor: pointer;
-    border-radius: 6px;
-    box-shadow:
-      0px 0px 3px rgba(0, 0, 0, 0.084),
-      0px 2px 3px rgba(0, 0, 0, 0.168);
-  }
+    box-shadow: 0 4px 12px rgba(216, 87, 93, 0.35);
+    transition: all 0.2s ease;
 
-  .form-container .form-submit-btn:hover {
-    background-color: #313131;
-  }
+    &:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.05);
+      box-shadow: 0 6px 16px rgba(216, 87, 93, 0.45);
+    }
 
-  .form-container .form-submit-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+    &:active {
+      transform: translateY(0);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
   }
 `
 

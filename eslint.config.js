@@ -20,3 +20,4 @@ export default defineConfig([
     },
   },
 ])
+// Configuracion de ESLint del proyecto

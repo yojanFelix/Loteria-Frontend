@@ -1,6 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
-import logo from './assets/logo.png'
+import PapelPicado from './components/PapelPicado/PapelPicado'
+import DesertLandscape from './components/DesertLandscape/DesertLandscape'
+import FestiveDecorations from './components/FestiveDecorations/FestiveDecorations'
+import maracasImg from './assets/theme/maracas.png'
+import sombreroImg from './assets/theme/sombrero.png'
 import LogIn from './components/Board/LogIn'
 import Navbar from './components/Navbar/Navbar'
 import Home from './pages/Home/Home'
@@ -52,12 +56,23 @@ function App() {
   }
 
   return (
-    <div className="app-background">
-      <img src={logo} alt="logo" className="logo" />
+    <div className="app-background login-page">
+      <PapelPicado />
+      <FestiveDecorations variant="login" />
+
+      <div className="login-header">
+        <h1 className="login-titulo">Lotería Mexicana</h1>
+        <div className="vignette-emblema">
+          <img src={sombreroImg} alt="" className="vignette-sombrero" />
+          <img src={maracasImg} alt="Maracas mexicanas" className="login-maracas" />
+        </div>
+      </div>
 
       <div className="content-wrapper">
-        <LogIn onLoginExitoso={() => setAutenticado(true)} />
+        <LogIn onLoginExitoso={handleLoginExitoso} />
       </div>
+
+      <DesertLandscape />
     </div>
   )
 }
