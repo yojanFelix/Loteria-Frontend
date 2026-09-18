@@ -1,3 +1,17 @@
+:root {
+  --color-bg: #F9EEDB;
+  --color-red: #D8575D;
+  --color-blue: #81AEB7;
+  --color-dark: #465D6B;
+  --color-pink: #F3BFB4;
+  --color-terracotta: #C06554;
+  --color-sage: #96BAB3;
+  --color-yellow: #F9C94A;
+  --color-olive: #748F7B;
+  --font-theme: 'Rye', 'Spicy Rice', serif;
+  --font-sans: 'Outfit', system-ui, -apple-system, sans-serif;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -7,22 +21,26 @@
 html, body, #root {
   width: 100%;
   min-height: 100vh;
+  background-color: var(--color-bg);
+  color: var(--color-dark);
+  font-family: var(--font-sans);
   overflow-x: hidden;
 }
 
+/* Prevenir desbordamiento horizontal y safe areas */
 body {
-  font-family: system-ui, sans-serif;
-  background-color: #ffffff; /* beige, como respaldo */
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
-html{
+/* Tipografía de títulos con estilo festivo tradicional */
+.font-loteria {
+  font-family: var(--font-theme);
+  letter-spacing: 0.5px;
+}
+
+/* Scrollbar sutil */
+html {
   overflow-y: auto;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-blue) var(--color-bg);
 }
-
-html::-webkit-scrollbar {
-  display: none;
-}
-
-/* estilo de login nuevo */
-
