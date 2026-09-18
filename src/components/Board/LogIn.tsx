@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import styled from 'styled-components'
 
-const Form = () => {
+interface LogInProps {
+  onLoginSuccess: (accountNumber: string) => void
+}
+
+const Form = ({ onLoginSuccess }: LogInProps) => {
   const [accountNumber, setAccountNumber] = useState('')
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
@@ -29,7 +33,9 @@ const Form = () => {
       }
 
       // Login exitoso
+      localStorage.setItem('accountNumber', accountNumber)
       console.log('Login exitoso:', data)
+      onLoginSuccess(accountNumber)
       // Aquí podrías guardar el token/usuario y redirigir, ej:
       // localStorage.setItem('usuario', JSON.stringify(data.usuario))
       // navigate('/tablero')
