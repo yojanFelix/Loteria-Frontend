@@ -16,6 +16,7 @@ import ReglasModal from './components/ReglasModal/ReglasModal';
 import ConfirmModal from './components/ConfirmModal/ConfirmModal';
 import PerfilModal from './components/PerfilModal/PerfilModal';
 import ConfigModal from './components/ConfigModal/ConfigModal';
+import { usePreloadDeck } from './hooks/usePreloadDeck';
 import {
   abandonarSala,
   conectarSocket,
@@ -23,6 +24,8 @@ import {
 } from './socket/socket';
 
 function App() {
+  usePreloadDeck();
+
   const [autenticado, setAutenticado] = useState<boolean>(() => {
     return Boolean(localStorage.getItem('token') && localStorage.getItem('accountNumber'));
   });
