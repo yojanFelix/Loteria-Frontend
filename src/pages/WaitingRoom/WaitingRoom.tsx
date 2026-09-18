@@ -1,27 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import styled from 'styled-components';
 import Confetti from 'react-confetti';
 import { useWindowSize } from 'react-use';
 import { useGameStore } from '../../store/gameStore';
-import {
-  abandonarSala,
-  cantarLoteria,
-  iniciarPartida,
-  notificarJugada,
-  sincronizarEstadoPartida,
-} from '../../socket/socket';
-import {
-  ETIQUETAS_MODOS,
-  etiquetaDePatron
-} from '../../utils/constants'; // Wait, these were in socket.ts before?
-import { patronesCompletados } from '../../utils/patrones';
-import { imagenDeCarta } from '../../utils/cartas';
-import { MARKER_OPTIONS, getSelectedMarkers, getRandomRotation } from '../../components/ConfigModal/ConfigModal';
-import QRModal from '../../components/QRModal/QRModal';
-import { TrophyIcon, QrIcon, CopyIcon, CheckIcon } from '../../components/Icons/Icons';
+import { sincronizarEstadoPartida } from '../../socket/socket';
+import { ETIQUETAS_MODOS } from '../../utils/constants';
 import type { ModoJuego } from '../../types/game.types';
 
-const DURACION_CARTA_MS = 4000;
+import Lobby from './components/Lobby/Lobby';
+import GameBoard from './components/GameBoard/GameBoard';
+import EventFeed from './components/EventFeed/EventFeed';
+import WinnerBanner from './components/WinnerBanner/WinnerBanner';
 
 interface WaitingRoomProps {
   code: string;
@@ -31,435 +20,83 @@ interface WaitingRoomProps {
   onSalir: () => void;
 }
 
-const WaitingRoom = ({ code, hostAccountNumber, modos, onSalir }: WaitingRoomProps) => {
-  // Estado global mediante Zustand
+export default function WaitingRoom({ code, hostAccountNumber, modos, onSalir }: WaitingRoomProps) {
   const { 
     jugadoresEnSala: jugadores,
     partidaIniciada,
-    tablero,
-    cartasCantadas,
-    ganador,
-    notificaciones,
-    ultimaLlamada
+    ganador
   } = useGameStore();
 
-  const [error, setError] = useState('');
-  const [copiado, setCopiado] = useState(false);
-  const [mostrarQR, setMostrarQR] = useState(false);
-  const [iniciando, setIniciando] = useState(false);
-  const [cantando, setCantando] = useState(false);
-  const [ahora, setAhora] = useState(0);
-  
-  const [marcadas, setMarcadas] = useState<number[]>(() => {
-    try {
-      const guardadas = localStorage.getItem(`marcadas_${code}`);
-      return guardadas ? JSON.parse(guardadas) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const [selectedMarkers, setSelectedMarkers] = useState<string[]>(getSelectedMarkers());
-  const [useRandomRotation, setUseRandomRotation] = useState<boolean>(getRandomRotation());
-  
-  useEffect(() => {
-    const handleMarkersChanged = () => {
-      setSelectedMarkers(getSelectedMarkers());
-      setUseRandomRotation(getRandomRotation());
-    };
-    window.addEventListener('markersChanged', handleMarkersChanged);
-    return () => window.removeEventListener('markersChanged', handleMarkersChanged);
-  }, []);
-
-  const patronesAnunciados = useRef(new Set<string>());
   const { width, height } = useWindowSize();
 
-  const getMarkerImg = (cardId: number) => {
-    const markerId = selectedMarkers[cardId % selectedMarkers.length];
-    const option = MARKER_OPTIONS.find(m => m.id === markerId) || MARKER_OPTIONS[0];
-    return option.img;
-  };
-  
-  const getMarkerRotation = (cardId: number) => {
-    if (!useRandomRotation) return 18;
-    return (cardId * 101) % 360;
-  };
-
-  const alternarCarta = (id: number) => {
-    const yaCantada = cartasCantadas.some((carta) => carta.id === id);
-    if (!yaCantada) {
-      setError('No puedes marcar esa carta: aún no ha sido cantada');
-      return;
-    }
-    setError('');
-
-    const isMarked = marcadas.includes(id);
-    const nuevo = isMarked ? marcadas.filter((m) => m !== id) : [...marcadas, id];
-
-    if (!isMarked && tablero) {
-      const completados = patronesCompletados(tablero.cards, nuevo);
-      for (const pattern of completados) {
-        const clave = `${code}_${pattern}`;
-        if (!patronesAnunciados.current.has(clave)) {
-          patronesAnunciados.current.add(clave);
-          void notificarJugada(code, pattern);
-        }
-      }
-    }
-
-    if (!isMarked) {
-      try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioContext) {
-          const audioCtx = new AudioContext();
-          const oscillator = audioCtx.createOscillator();
-          const gainNode = audioCtx.createGain();
-          
-          oscillator.type = 'sine';
-          oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
-          oscillator.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.1);
-          
-          gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
-          gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-          
-          oscillator.connect(gainNode);
-          gainNode.connect(audioCtx.destination);
-          
-          oscillator.start();
-          oscillator.stop(audioCtx.currentTime + 0.1);
-        }
-      } catch (e) {
-      }
-    }
-
-    try {
-      localStorage.setItem(`marcadas_${code}`, JSON.stringify(nuevo));
-    } catch {}
-    setMarcadas(nuevo);
-  };
-
-  // Reproducir audio cuando sale una carta nueva
-  useEffect(() => {
-    if (cartasCantadas.length > 0) {
-      const ultimaCarta = cartasCantadas[cartasCantadas.length - 1];
-      if (ultimaCarta) {
-        window.speechSynthesis.cancel();
-        const speech = new SpeechSynthesisUtterance(ultimaCarta.name);
-        speech.lang = 'es-MX';
-        speech.rate = 1.1;
-        window.speechSynthesis.speak(speech);
-      }
-    }
-  }, [cartasCantadas]);
-
+  // Al entrar a la partida o si se reconecta
   useEffect(() => {
     if (partidaIniciada) {
       void sincronizarEstadoPartida(code);
     }
   }, [partidaIniciada, code]);
 
-  useEffect(() => {
-    const intervalo = setInterval(() => setAhora(Date.now()), 100);
-    return () => clearInterval(intervalo);
-  }, []);
-
-  const cuentaLocal = localStorage.getItem('accountNumber') ?? '';
-  const esHost = hostAccountNumber === cuentaLocal;
-
-  const iniciar = async () => {
-    setError('');
-    setIniciando(true);
-    try {
-      // El backend reparte los tableros (game:board) y avisa a la sala (game:started)
-      await iniciarPartida(code);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo iniciar la partida');
-    } finally {
-      setIniciando(false);
-    }
-  };
-
-  // El jugador grita "¡Lotería!": el servidor revalida su tablero contra las
-  // cartas cantadas; si es válido, llega el broadcast game:finished con el ganador.
-  const cantar = async () => {
-    setError('');
-    setCantando(true);
-    try {
-      await cantarLoteria(code);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Reclamo rechazado');
-    } finally {
-      setCantando(false);
-    }
-  };
-
-  const copiarCodigo = async () => {
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(code);
-      } else {
-        const textarea = document.createElement('textarea');
-        textarea.value = code;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-      }
-      setCopiado(true);
-      setTimeout(() => setCopiado(false), 2000);
-    } catch {
-      setError('No se pudo copiar el código');
-    }
-  };
-
-  const salir = async () => {
-    try {
-      await abandonarSala(code);
-    } catch (err) {
-      // Aunque el backend falle, volvemos a Home; el janitor limpia salas vacías
-      setError(err instanceof Error ? err.message : 'No se pudo salir de la sala');
-      return;
-    }
-    try {
-      localStorage.removeItem('activeRoom');
-      localStorage.removeItem(`marcadas_${code}`);
-    } catch {
-      // Ignorar error de almacenamiento
-    }
-    onSalir();
-  };
-
-  if (partidaIniciada) {
-    const cartaActual = cartasCantadas[cartasCantadas.length - 1] ?? null;
-    const previas = cartasCantadas.slice(-4, -1); // las 3 anteriores a la actual
-    const restanteMs = Math.max(0, DURACION_CARTA_MS - (ahora - ultimaLlamada));
-    const restanteSeg = restanteMs / 1000;
-    const anchoBarra = (100 * restanteMs) / DURACION_CARTA_MS;
-    const aliasGanador = ganador
-      ? (jugadores.find((j) => j.accountNumber === ganador.winner)?.alias ?? ganador.winner)
-      : '';
-
-    return (
-      <StyledWrapper>
-        {ganador && <Confetti width={width} height={height} recycle={false} numberOfPieces={500} />}
-        <div className="tablero-contenedor">
-          <h2>¡La partida ha comenzado!</h2>
-
-          {modos.length > 0 && (
-            <p className="modo-juego">
-              Modo de juego: {modos.map((m) => ETIQUETAS_MODOS[m]).join(', ')}
-            </p>
-          )}
-
-          {ganador && (
-            <div className="banner-ganador">
-              <h2 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                <TrophyIcon size={28} color="#d97706" />
-                <span>¡Lotería!</span>
-                <TrophyIcon size={28} color="#d97706" />
-              </h2>
-              <p>
-                Ganó <strong>{aliasGanador}</strong> con {etiquetaDePatron(ganador.pattern)}
-              </p>
-            </div>
-          )}
-
-          <div className="panel-cartas">
-            <div className="carta-actual">
-              <h3>Carta actual</h3>
-              {cartaActual ? (
-                <>
-                  {imagenDeCarta(cartaActual.id) ? (
-                    <img src={imagenDeCarta(cartaActual.id)} alt={cartaActual.name} />
-                  ) : (
-                    <span className="sin-imagen">{cartaActual.name}</span>
-                  )}
-                  <span className="numero-nombre">
-                    {cartaActual.id}. {cartaActual.name}
-                  </span>
-                </>
-              ) : (
-                <p className="cargando">Esperando la primera carta…</p>
-              )}
-              <div className="contador">
-                <div className="barra">
-                  <div className="progreso" style={{ width: `${anchoBarra}%` }} />
-                </div>
-                <span>
-                  {restanteSeg > 0
-                    ? `Siguiente carta en ${restanteSeg.toFixed(1)} s`
-                    : 'Siguiente carta en camino…'}
-                </span>
-              </div>
-            </div>
-
-            <div className="previas">
-              <h3>Cartas anteriores</h3>
-              <div className="lista-previas">
-                {previas.length === 0 ? (
-                  <span className="cargando">Aún no hay cartas anteriores</span>
-                ) : (
-                  previas.map((carta) => (
-                    <div className="previa" key={carta.id}>
-                      {imagenDeCarta(carta.id) ? (
-                        <img src={imagenDeCarta(carta.id)} alt={carta.name} />
-                      ) : (
-                        <span className="sin-imagen">{carta.name}</span>
-                      )}
-                      <span>
-                        {carta.id}. {carta.name}
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-
-          {tablero ? (
-            <>
-              <div className="tablero">
-                {tablero.cards.map((carta) => {
-                  const imagen = imagenDeCarta(carta.id);
-                  const marcada = marcadas.includes(carta.id);
-                  return (
-                    <button
-                      type="button"
-                      key={carta.id}
-                      className={marcada ? 'celda marcada' : 'celda'}
-                      onClick={() => alternarCarta(carta.id)}
-                      disabled={ganador !== null}
-                    >
-                      <div className="carta-contenedor">
-                        {imagen ? (
-                          <img src={imagen} alt={carta.name} />
-                        ) : (
-                          <span className="sin-imagen">{carta.name}</span>
-                        )}
-                        {marcada && (
-                          <img 
-                            src={getMarkerImg(carta.id)} 
-                            alt="Marcador" 
-                            className="marcador-img" 
-                            style={{ '--rotacion': `${getMarkerRotation(carta.id)}deg` } as React.CSSProperties}
-                          />
-                        )}
-                      </div>
-                      <span className="nombre-carta">{carta.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="cargando">Marca tus cartas cuando el cantor las nombre.</p>
-            </>
-          ) : (
-            <p className="cargando">Esperando tu tablero…</p>
-          )}
-
-          <div className="feed-notificaciones">
-            <h3>Jugadas de la sala</h3>
-            {notificaciones.length === 0 ? (
-              <p className="cargando">Aún no hay jugadas destacadas</p>
-            ) : (
-              <ul className="lista-notificaciones">
-                {notificaciones.map((notif, index) => (
-                  <li key={`${notif.accountNumber}-${index}`}>{notif.message}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {error && <p className="error-message">{error}</p>}
-
-          {!ganador && (
-            <button type="button" className="boton-loteria" onClick={cantar} disabled={cantando}>
-              {cantando ? 'Verificando…' : '¡Lotería!'}
-            </button>
-          )}
-        </div>
-      </StyledWrapper>
-    );
-  }
+  const aliasGanador = ganador
+    ? (jugadores.find((j) => j.accountNumber === ganador.winner)?.alias ?? ganador.winner)
+    : '';
 
   return (
     <StyledWrapper>
-      <div className="waiting-container">
-        <h2>Sala de espera</h2>
+      {partidaIniciada ? (
+        <>
+          {ganador && <Confetti width={width} height={height} recycle={false} numberOfPieces={500} />}
+          <div className="tablero-contenedor">
+            <h2>¡La partida ha comenzado!</h2>
 
-        {modos.length > 0 && (
-          <p className="modo-juego">
-            Modo de juego: {modos.map((m) => ETIQUETAS_MODOS[m]).join(', ')}
-          </p>
-        )}
+            {modos.length > 0 && (
+              <p className="modo-juego">
+                Modo de juego: {modos.map((m) => ETIQUETAS_MODOS[m]).join(', ')}
+              </p>
+            )}
 
-        <div className="codigo-fila">
-          <span className="codigo">{code}</span>
-          <button type="button" className="boton-copiar" onClick={copiarCodigo}>
-            {copiado ? <CheckIcon size={15} /> : <CopyIcon size={15} />}
-            <span>{copiado ? '¡Copiado!' : 'Copiar'}</span>
-          </button>
-          <button type="button" className="boton-qr" onClick={() => setMostrarQR(true)}>
-            <QrIcon size={15} />
-            <span>Ver QR</span>
-          </button>
-        </div>
+            {ganador && <WinnerBanner ganador={ganador} aliasGanador={aliasGanador} />}
 
-        <QRModal
+            <GameBoard code={code} />
+
+            <EventFeed />
+          </div>
+        </>
+      ) : (
+        <Lobby 
           code={code}
-          isOpen={mostrarQR}
-          onClose={() => setMostrarQR(false)}
+          hostAccountNumber={hostAccountNumber}
+          modos={modos}
+          onSalir={onSalir}
         />
-
-        <h3>
-          Jugadores conectados ({jugadores.length})
-        </h3>
-
-        {jugadores.length === 0 && <p className="cargando">Cargando jugadores…</p>}
-
-        <ul className="lista-jugadores">
-          {jugadores.map((jugador) => (
-            <li key={jugador.accountNumber}>
-              {jugador.alias}
-              {jugador.accountNumber === cuentaLocal && ' (tú)'}
-            </li>
-          ))}
-        </ul>
-
-        {error && <p className="error-message">{error}</p>}
-
-        {esHost && (
-          <button type="button" className="boton-iniciar" onClick={iniciar} disabled={iniciando}>
-            {iniciando ? 'Iniciando…' : 'Iniciar partida'}
-          </button>
-        )}
-
-        <button type="button" className="boton-salir" onClick={salir}>
-          Salir
-        </button>
-      </div>
+      )}
     </StyledWrapper>
   );
-};
+}
 
 const StyledWrapper = styled.div`
   .waiting-container {
     max-width: 400px;
     background-color: #fff;
     padding: 32px 24px;
-    font-size: 14px;
-    font-family: inherit;
-    color: #212121;
+    border-radius: 12px;
+    margin: 40px auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    box-sizing: border-box;
-    border-radius: 10px;
-    box-shadow:
-      0px 0px 3px rgba(0, 0, 0, 0.084),
-      0px 2px 3px rgba(0, 0, 0, 0.168);
-    margin: 32px auto;
+    gap: 20px;
+  }
+
+  .waiting-container h2 {
+    margin: 0;
+    font-size: 24px;
+    color: var(--color-dark, #465D6B);
+    text-align: center;
+  }
+
+  .waiting-container h3 {
+    margin: 10px 0 0;
+    font-size: 16px;
+    color: var(--color-dark, #465D6B);
     text-align: center;
   }
 
@@ -477,6 +114,7 @@ const StyledWrapper = styled.div`
     letter-spacing: 4px;
     width: 100%;
     margin-bottom: 4px;
+    text-align: center;
   }
 
   .boton-copiar,
@@ -874,5 +512,3 @@ const StyledWrapper = styled.div`
     border-radius: 4px;
   }
 `;
-
-export default WaitingRoom;
