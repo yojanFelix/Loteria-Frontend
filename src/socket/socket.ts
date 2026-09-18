@@ -49,11 +49,10 @@ export const conectar = (): Socket => {
     // --- Configuración de Listeners del Store ---
 
     // Cambios en los jugadores de la sala
-    socket.on('room:players', (payload: { roomCode: string; aliases: Record<string, string> }) => {
-      // Ignorar si es de una sala en la que ya no estamos
-      if (salaActual !== null && payload.roomCode !== salaActual) return;
-      const arr = Object.entries(payload.aliases || {}).map(([acc, alias]) => ({ accountNumber: acc, alias }));
-      useGameStore.getState().setJugadoresEnSala(arr);
+    socket.on('room:players', (payload: Array<{ accountNumber: string; alias: string }>) => {
+      if (Array.isArray(payload)) {
+        useGameStore.getState().setJugadoresEnSala(payload);
+      }
     });
 
     // Eventos del lobby
