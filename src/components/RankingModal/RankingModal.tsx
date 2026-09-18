@@ -28,7 +28,8 @@ export const RankingModal: React.FC<RankingModalProps> = ({ isOpen, onClose }) =
       const resp = await fetch(`${import.meta.env.VITE_API_URL}/api/users/ranking`);
       const data = await resp.json();
       if (data.ok && Array.isArray(data.data)) {
-        setRanking(data.data);
+        const rankingFiltrado = data.data.filter((user: RankingUsuario) => user.totalWins > 0);
+        setRanking(rankingFiltrado);
       } else {
         setError(data.message || 'Error al obtener la tabla de clasificación');
       }
