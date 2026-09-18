@@ -146,23 +146,11 @@ function Home() {
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
 
-  const handleCodigoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let raw = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
-    if (raw.length > 3) {
-      raw = `${raw.slice(0, 3)}-${raw.slice(3)}`;
-    }
-    setCodigo(raw);
-  };
-
-  const handleUnirse = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  const handleCreateRoom = (nombre: string, maxPlayers: number, alias: string, modo: ModoJuego) => {
     setError('');
+    setCargando(true);
 
-    const cleanCode = codigo.trim();
-    if (!/^[A-Z0-9]{3}-[A-Z0-9]{3}$/.test(cleanCode)) {
-      setError('El código debe tener el formato XXX-XXX');
-      return;
-    }
+    const socket = getSocket();
 
     const cleanAlias = aliasUnirse.trim();
     if (cleanAlias.length < 3 || cleanAlias.length > 45) {
@@ -185,9 +173,10 @@ function Home() {
     }
   };
 
-  const handleCrear = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  const handleJoinRoom = (e: React.FormEvent) => {
+    e.preventDefault();
     setError('');
+    setCargando(true);
 
     const cleanNombre = (nombreSala.trim() || 'Sala Mexicana');
     if (cleanNombre.length < 3 || cleanNombre.length > 45) {
@@ -209,18 +198,16 @@ function Home() {
       return;
     }
 
-    if (patronesSeleccionados.length === 0) {
-      setError('Debes seleccionar al menos un patrón para ganar');
-      return;
-    }
+    socket.emit(
+      'room:join',
+      { code: joinCode, alias },
+      (response: { ok: boolean; data?: any; message?: string }) => {
+        setCargando(false);
 
-    // Cada patrón visual seleccionado aporta un modo de victoria al backend.
-    // Varios patrones (p. ej. Chorro y Equis) pueden mapear al mismo modo; se deduplica.
-    const modos = [...new Set(
-      PATRONES
-        .filter((p) => patronesSeleccionados.includes(p.id))
-        .map((p) => p.modoBackend)
-    )];
+        if (!response.ok) {
+          setError(response.message || 'No se pudo unir a la sala');
+          return;
+        }
 
     setCargando(true);
     try {

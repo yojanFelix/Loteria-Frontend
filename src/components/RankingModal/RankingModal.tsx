@@ -40,7 +40,6 @@ export const RankingModal: React.FC<RankingModalProps> = ({ isOpen, onClose }) =
       setCargando(false);
     }
   };
-
   useEffect(() => {
     if (isOpen) {
       cargarRanking();

@@ -1,41 +1,33 @@
+
 import styled from 'styled-components';
 
 interface InputProps {
-  value: string;
-  onChange: (valor: string) => void;
-  onSubmit?: () => void;
-  placeholder?: string;
+    value: string;
+    onChange: (value: string) => void;
 }
 
-const Input = ({ value, onChange, onSubmit, placeholder = 'XXX-XXX' }: InputProps) => {
-  const mayus = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let texto = e.target.value.toUpperCase().replace(/-/g, '')
-    texto = texto.slice(0, 6);
+const Input = ({ value, onChange }: InputProps) => {
+    const mayus = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let texto = e.target.value.toUpperCase().replace(/-/g, '')
+        texto = texto.slice(0, 6);
 
-    if (texto.length > 3) {
-      texto = texto.slice(0, 3) + '-' + texto.slice(3);
+        if (texto.length > 3){
+            texto = texto.slice(0, 3) + '-' + texto.slice(3);
+        }
+        onChange(texto);
     }
-    onChange(texto);
-  }
-
-  const manejarTecla = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && value.length === 7) {
-      onSubmit?.();
-    }
-  }
 
   return (
     <StyledWrapper>
-      <input
-        type="text"
-        name="text"
-        className="input"
-        placeholder={placeholder}
-        maxLength={7}
-        onChange={mayus}
-        onKeyDown={manejarTecla}
-        value={value}
-      />
+      <input 
+      type="text" 
+      name="text" 
+      className="input" 
+      placeholder="XXX-XXX" 
+      maxLength={7}
+      onChange={mayus}
+      value={value}
+       />
     </StyledWrapper>
   );
 }

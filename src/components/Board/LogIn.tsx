@@ -110,6 +110,32 @@ const Form = ({ onLoginExitoso }: LogInProps) => {
             {cargando ? 'Verificando...' : 'Ingresar a jugar'}
           </button>
         </form>
+
+        <div className="separador-invitado">
+          <span>o</span>
+        </div>
+
+        {modoInvitado ? (
+          <form className="form form-invitado" onSubmit={manejarInvitado}>
+            <div className="form-group">
+              <input
+                placeholder="Tu nombre de invitado"
+                type="text"
+                maxLength={30}
+                value={nombreInvitado}
+                onChange={(e) => setNombreInvitado(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <button type="submit" className="form-submit-btn btn-invitado" disabled={cargando}>
+              {cargando ? 'Entrando...' : 'Entrar como invitado'}
+            </button>
+          </form>
+        ) : (
+          <button type="button" className="link-invitado" onClick={() => setModoInvitado(true)}>
+            Jugar como invitado
+          </button>
+        )}
       </div>
     </StyledWrapper>
   )
@@ -213,6 +239,48 @@ const StyledWrapper = styled.div`
     background-color: rgba(216, 87, 93, 0.08);
     padding: 8px 12px;
     border-radius: 8px;
+  }
+
+  .separador-invitado {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #8B8E98;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .separador-invitado::before,
+  .separador-invitado::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #e8e8e8;
+  }
+
+  .link-invitado {
+    background: transparent;
+    border: none;
+    color: var(--color-blue, #81AEB7);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 4px;
+  }
+
+  .link-invitado:hover {
+    color: var(--color-dark, #465D6B);
+  }
+
+  .btn-invitado {
+    background-color: var(--color-blue, #81AEB7);
+  }
+
+  .form-invitado {
+    margin-top: -6px;
   }
 
   .form-submit-btn {
