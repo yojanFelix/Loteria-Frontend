@@ -1,9 +1,12 @@
-import { useState } from 'react';
+
 import styled from 'styled-components';
 
-const Input = () => {
-    const [valor, setValor] = useState('');
+interface InputProps {
+    value: string;
+    onChange: (value: string) => void;
+}
 
+const Input = ({ value, onChange }: InputProps) => {
     const mayus = (e: React.ChangeEvent<HTMLInputElement>) => {
         let texto = e.target.value.toUpperCase().replace(/-/g, '')
         texto = texto.slice(0, 6);
@@ -11,7 +14,7 @@ const Input = () => {
         if (texto.length > 3){
             texto = texto.slice(0, 3) + '-' + texto.slice(3);
         }
-        setValor(texto);
+        onChange(texto);
     }
   return (
     <StyledWrapper>
@@ -22,7 +25,7 @@ const Input = () => {
       placeholder="XXX-XXX" 
       maxLength={7}
       onChange={mayus}
-      value={valor}
+      value={value}
        />
     </StyledWrapper>
   );

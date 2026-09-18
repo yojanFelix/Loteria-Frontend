@@ -3,42 +3,62 @@ import './Home.css';
 import Input from '../../components/Input/Input';
 import Button from '../../components/Button/button-create';
 import CreateRoomModal from '../../components/CreateRoomModal/CreateRoomModal';
+import { getSocket } from '../../socket';
 
-function Home() {
+interface HomeProps {
+  onRoomReady: (roomCode: string, board: unknown) => void;
+}
+
+function Home({ onRoomReady }: HomeProps) {
   const [showModal, setShowModal] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
+  const [error, setError] = useState('');
+  const [cargando, setCargando] = useState(false);
 
   const handleCreateRoom = async (maxPlayers: number) => {
-    try {
-      const accountNumber = localStorage.getItem('accountNumber');
+    setError('');
+    setCargando(true);
 
-      if (!accountNumber) {
-        alert("No se encontró la sesión. Por favor, inicia sesión nuevamente.");
-        return;
-      }
+    const socket = getSocket();
 
-      const response = await fetch('http://localhost:3000/api/rooms', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          hostAccountNumber: accountNumber,
-          maxPlayers: maxPlayers
-        })
-      });
+    socket.emit(
+      'room:create',
+      { name: 'Sala de Loteria', maxPlayers },
+      (response: { ok: boolean; data?: any; message?: string }) => {
+        setCargando(false);
 
-      const result = await response.json();
+        if (!response.ok) {
+          setError(response.message || 'No se pudo crear la sala');
+          return;
+        }
 
-      if (result.ok) {
         setShowModal(false);
-        const codigoGenerado = result.data.message.code;
-        alert(`¡Sala creada exitosamente! Tu código es: ${codigoGenerado}`);
-      } else {
-        alert(result.message);
+        onRoomReady(response.data.code, response.data.board);
       }
-    } catch (error) {
-      console.error(error);
-    }
+    );
+  };
+
+  const handleJoinRoom = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setCargando(true);
+
+    const socket = getSocket();
+
+    socket.emit(
+      'room:join',
+      { code: joinCode },
+      (response: { ok: boolean; data?: any; message?: string }) => {
+        setCargando(false);
+
+        if (!response.ok) {
+          setError(response.message || 'No se pudo unir a la sala');
+          return;
+        }
+
+        onRoomReady(response.data.room.code, response.data.board);
+      }
+    );
   };
 
   return (
@@ -49,12 +69,27 @@ function Home() {
       <div className="text-wrapper">
         <h3 className="text">Ingresa el codigo de la sala</h3>
       </div>
-      <div className="content-wrapper">
-        <Input />
-      </div>
+
+      <form onSubmit={handleJoinRoom}>
+        <div className="content-wrapper">
+          <Input value={joinCode} onChange={setJoinCode} />
+        </div>
+        <div className="button-wrapper">
+          <button type="submit" disabled={cargando || !joinCode}>
+            {cargando ? 'Uniendo...' : 'Unirse'}
+          </button>
+        </div>
+      </form>
+
       <div className="button-wrapper">
         <Button onClick={() => setShowModal(true)} />
       </div>
+
+      {error && (
+        <div className="text-wrapper">
+          <p style={{ color: '#e0245e' }}>{error}</p>
+        </div>
+      )}
 
       {showModal && (
         <CreateRoomModal

@@ -31,8 +31,8 @@ const Form = ({ onLoginExitoso }: LogInProps) => {
         setCargando(false)
         return
       }
-
       localStorage.setItem('accountNumber', accountNumber)
+      localStorage.setItem('token', data.data.token)
       onLoginExitoso()
     } catch (err) {
       setError('No se pudo conectar con el servidor')
