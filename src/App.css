@@ -1,20 +1,90 @@
 
-.logo {
-   width: 90%;
-  max-width: 900px;
-  margin: 24px auto;
-  display: block;
-}
 .app-background {
   width: 100vw;
   min-height: 100vh;
-  background-color: #ffffff;
-  overflow: hidden;
+  background-color: var(--color-bg, #F9EEDB);
+  overflow-x: hidden;
+}
+
+.login-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 0;
+  width: 100%;
+}
+
+.login-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 500px;
+  margin: 8px 0 16px;
+  position: relative;
+  z-index: 2;
+}
+
+.login-titulo {
+  font-family: var(--font-theme);
+  color: var(--color-dark, #465D6B);
+  font-size: clamp(32px, 7vw, 48px);
+  text-align: center;
+  margin: 6px 0 14px;
+  letter-spacing: 0.5px;
+}
+
+.vignette-emblema {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 220px;
+  height: clamp(80px, 18vw, 110px);
+  cursor: pointer;
+}
+
+.vignette-sombrero {
+  position: absolute;
+  width: clamp(85px, 20vw, 130px);
+  height: auto;
+  object-fit: contain;
+  transform: translate(-18px, -10px) rotate(-14deg);
+  opacity: 0.94;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.14));
+  transition: transform 0.3s ease;
+}
+
+.login-maracas {
+  position: relative;
+  z-index: 2;
+  width: clamp(80px, 18vw, 115px);
+  height: auto;
+  object-fit: contain;
+  transform: translate(14px, 4px) rotate(6deg);
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.15));
+  transition: transform 0.3s ease;
+}
+
+.vignette-emblema:hover .login-maracas {
+  transform: translate(14px, 2px) rotate(14deg) scale(1.06);
+}
+
+.vignette-emblema:hover .vignette-sombrero {
+  transform: translate(-20px, -14px) rotate(-18deg) scale(1.05);
 }
 
 .content-wrapper {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 10vh; /* resta el espacio que ocupa la navbar */
+  width: 100%;
+  max-width: 480px;
+  position: relative;
+  z-index: 2;
+  padding: 0 16px clamp(12px, 2vh, 24px);
+  box-sizing: border-box;
 }

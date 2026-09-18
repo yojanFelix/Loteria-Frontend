@@ -3,19 +3,59 @@ import logo from '../../assets/logo.png'
 
 interface NavbarProps {
   onLogout: () => void;
+  onAbrirSeccion?: (seccion: 'salas' | 'ranking' | 'reglas' | 'perfil') => void;
+  onIrAlMenu?: () => void;
 }
 
-function Navbar({ onLogout }: NavbarProps) {
+function Navbar({ onLogout, onAbrirSeccion, onIrAlMenu }: NavbarProps) {
   return (
     <nav className="navbar">
-      <div className="navbar-logo">
+      <button
+        type="button"
+        className="navbar-logo"
+        onClick={onIrAlMenu}
+        aria-label="Ir al menú principal"
+      >
         <img src={logo} alt="Lotería" />
-      </div>
+      </button>
 
       <ul className="navbar-links">
-        <li><a href="#salas">Salas</a></li>
-        <li><a href="#ranking">Ranking</a></li>
-        <li><a href="#reglas">Reglas</a></li>
+        <li>
+          <button
+            type="button"
+            className="nav-btn"
+            onClick={() => onAbrirSeccion?.('perfil')}
+          >
+            Perfil
+          </button>
+        </li>
+        <li>
+          <button
+            type="button"
+            className="nav-btn"
+            onClick={() => onAbrirSeccion?.('salas')}
+          >
+            Salas
+          </button>
+        </li>
+        <li>
+          <button
+            type="button"
+            className="nav-btn"
+            onClick={() => onAbrirSeccion?.('ranking')}
+          >
+            Ranking
+          </button>
+        </li>
+        <li>
+          <button
+            type="button"
+            className="nav-btn"
+            onClick={() => onAbrirSeccion?.('reglas')}
+          >
+            Reglas
+          </button>
+        </li>
         <li>
           <button className="logout-btn" onClick={onLogout}>
             <svg

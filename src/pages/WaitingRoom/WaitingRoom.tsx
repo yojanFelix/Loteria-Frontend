@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import styled from 'styled-components';
+import Confetti from 'react-confetti';
+import { useWindowSize } from 'react-use';
 import {
   abandonarSala,
   cantarLoteria,
@@ -23,22 +25,26 @@ import {
   type TableroJugador,
 } from '../../socket/socket';
 import { imagenDeCarta } from '../../utils/cartas';
+import frijolImg from '../../assets/theme/frijol.png';
+import QRModal from '../../components/QRModal/QRModal';
+import { TrophyIcon, QrIcon, CopyIcon, CheckIcon } from '../../components/Icons/Icons';
 
 // El backend canta una carta nueva cada 4 segundos (CALL_INTERVAL_MS del servidor)
 const DURACION_CARTA_MS = 4000;
 
 interface WaitingRoomProps {
   code: string;
-  maxPlayers: number;
+  maxPlayers?: number;
   hostAccountNumber: string;
   modo: ModoJuego | null;
   onSalir: () => void;
 }
 
-const WaitingRoom = ({ code, maxPlayers, hostAccountNumber, modo, onSalir }: WaitingRoomProps) => {
+const WaitingRoom = ({ code, hostAccountNumber, modo, onSalir }: WaitingRoomProps) => {
   const [jugadores, setJugadores] = useState<JugadorEnSala[]>(() => getJugadoresDeSala(code));
   const [error, setError] = useState('');
   const [copiado, setCopiado] = useState(false);
+  const [mostrarQR, setMostrarQR] = useState(false);
   const [iniciando, setIniciando] = useState(false);
   const [cantando, setCantando] = useState(false);
   const [partidaIniciada, setPartidaIniciada] = useState(getPartidaIniciada);
@@ -47,13 +53,40 @@ const WaitingRoom = ({ code, maxPlayers, hostAccountNumber, modo, onSalir }: Wai
   const [ganador, setGanador] = useState<GanadorInfo | null>(getGanador);
   // El reloj del efecto lo actualiza cada 100 ms; arranca en 0 (sin impurezas en render)
   const [ahora, setAhora] = useState(0);
-  // El usuario marca sus cartas manualmente cuando las canta el cantor
-  const [marcadas, setMarcadas] = useState<number[]>([]);
+  // El usuario marca sus cartas manualmente cuando las canta el cantor (con caché local)
+  const [marcadas, setMarcadas] = useState<number[]>(() => {
+    try {
+      const guardadas = localStorage.getItem(`marcadas_${code}`);
+      return guardadas ? JSON.parse(guardadas) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const { width, height } = useWindowSize();
 
   const alternarCarta = (id: number) => {
-    setMarcadas((prev) =>
-      prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id],
-    );
+    setMarcadas((prev) => {
+      const isMarked = prev.includes(id);
+      const nuevo = isMarked ? prev.filter((m) => m !== id) : [...prev, id];
+      
+      // Reproducir sonido al marcar (usando un Audio base64 muy corto)
+      if (!isMarked) {
+        try {
+          // Sonido corto de 'pop' / 'click' para el frijolito
+          const popSound = new Audio('data:audio/mp3;base64,//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq');
+          popSound.volume = 0.5;
+          popSound.play().catch(() => {}); // Ignorar error si el navegador bloquea autoplay
+        } catch (e) {}
+      }
+
+      try {
+        localStorage.setItem(`marcadas_${code}`, JSON.stringify(nuevo));
+      } catch {
+        // Ignorar fallo de almacenamiento
+      }
+      return nuevo;
+    });
   };
 
   // El backend emite room:players a la sala en cada cambio; aquí solo nos
@@ -76,7 +109,22 @@ const WaitingRoom = ({ code, maxPlayers, hostAccountNumber, modo, onSalir }: Wai
 
   // card:called actualiza el historial; nos suscribimos para re-renderizar.
   useEffect(() => {
-    const cancelar = suscribirCartas(() => setCartasCantadas(getCartasCantadas()));
+    const cancelar = suscribirCartas(() => {
+      const nuevas = getCartasCantadas();
+      setCartasCantadas(nuevas);
+      
+      // Reproducir audio con la API de síntesis de voz
+      if (nuevas.length > 0) {
+        const ultimaCarta = nuevas[nuevas.length - 1];
+        if (ultimaCarta) {
+          window.speechSynthesis.cancel(); // Detener cualquier audio previo
+          const speech = new SpeechSynthesisUtterance(ultimaCarta.name);
+          speech.lang = 'es-MX';
+          speech.rate = 1.1;
+          window.speechSynthesis.speak(speech);
+        }
+      }
+    });
     return cancelar;
   }, []);
 
@@ -152,6 +200,12 @@ const WaitingRoom = ({ code, maxPlayers, hostAccountNumber, modo, onSalir }: Wai
       setError(err instanceof Error ? err.message : 'No se pudo salir de la sala');
       return;
     }
+    try {
+      localStorage.removeItem('activeRoom');
+      localStorage.removeItem(`marcadas_${code}`);
+    } catch {
+      // Ignorar error de almacenamiento
+    }
     onSalir();
   };
 
@@ -167,6 +221,7 @@ const WaitingRoom = ({ code, maxPlayers, hostAccountNumber, modo, onSalir }: Wai
 
     return (
       <StyledWrapper>
+        {ganador && <Confetti width={width} height={height} recycle={false} numberOfPieces={500} />}
         <div className="tablero-contenedor">
           <h2>¡La partida ha comenzado!</h2>
 
@@ -174,7 +229,11 @@ const WaitingRoom = ({ code, maxPlayers, hostAccountNumber, modo, onSalir }: Wai
 
           {ganador && (
             <div className="banner-ganador">
-              <h2>🏆 ¡Lotería! 🏆</h2>
+              <h2 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <TrophyIcon size={28} color="#d97706" />
+                <span>¡Lotería!</span>
+                <TrophyIcon size={28} color="#d97706" />
+              </h2>
               <p>
                 Ganó <strong>{aliasGanador}</strong> con {etiquetaDePatron(ganador.pattern)}
               </p>
@@ -247,11 +306,16 @@ const WaitingRoom = ({ code, maxPlayers, hostAccountNumber, modo, onSalir }: Wai
                       onClick={() => alternarCarta(carta.id)}
                       disabled={ganador !== null}
                     >
-                      {imagen ? (
-                        <img src={imagen} alt={carta.name} />
-                      ) : (
-                        <span className="sin-imagen">{carta.name}</span>
-                      )}
+                      <div className="carta-contenedor">
+                        {imagen ? (
+                          <img src={imagen} alt={carta.name} />
+                        ) : (
+                          <span className="sin-imagen">{carta.name}</span>
+                        )}
+                        {marcada && (
+                          <img src={frijolImg} alt="Frijolito marcador" className="frijol-marcador" />
+                        )}
+                      </div>
                       <span className="nombre-carta">{carta.name}</span>
                     </button>
                   );
@@ -285,12 +349,23 @@ const WaitingRoom = ({ code, maxPlayers, hostAccountNumber, modo, onSalir }: Wai
         <div className="codigo-fila">
           <span className="codigo">{code}</span>
           <button type="button" className="boton-copiar" onClick={copiarCodigo}>
-            {copiado ? '¡Copiado!' : 'Copiar'}
+            {copiado ? <CheckIcon size={15} /> : <CopyIcon size={15} />}
+            <span>{copiado ? '¡Copiado!' : 'Copiar'}</span>
+          </button>
+          <button type="button" className="boton-qr" onClick={() => setMostrarQR(true)}>
+            <QrIcon size={15} />
+            <span>Ver QR</span>
           </button>
         </div>
 
+        <QRModal
+          code={code}
+          isOpen={mostrarQR}
+          onClose={() => setMostrarQR(false)}
+        />
+
         <h3>
-          Jugadores conectados ({jugadores.length} / {maxPlayers})
+          Jugadores conectados ({jugadores.length})
         </h3>
 
         {jugadores.length === 0 && <p className="cargando">Cargando jugadores…</p>}
@@ -344,22 +419,49 @@ const StyledWrapper = styled.div`
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 10px;
   }
 
   .codigo {
     font-size: 32px;
     font-weight: 700;
     letter-spacing: 4px;
+    width: 100%;
+    margin-bottom: 4px;
   }
 
-  .boton-copiar {
-    padding: 8px 16px;
-    border-radius: 6px;
-    border: 1px solid #141414;
+  .boton-copiar,
+  .boton-qr {
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1.5px solid var(--color-dark, #465D6B);
     background: #fff;
+    color: var(--color-dark, #465D6B);
     font-family: inherit;
+    font-weight: 600;
+    font-size: 13px;
     cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .boton-copiar:hover {
+    background: rgba(70, 93, 107, 0.08);
+  }
+
+  .boton-qr {
+    background-color: var(--color-dark, #465D6B);
+    color: #fff;
+    border-color: var(--color-dark, #465D6B);
+  }
+
+  .boton-qr:hover {
+    filter: brightness(1.15);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(70, 93, 107, 0.25);
   }
 
   .lista-jugadores {
@@ -458,7 +560,22 @@ const StyledWrapper = styled.div`
     border-radius: 10px;
     cursor: pointer;
     font-family: inherit;
-    transition: border-color 0.2s, background 0.2s;
+    transition: all 0.2s ease;
+    position: relative;
+
+    &:hover {
+      border-color: var(--color-blue, #81AEB7);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    }
+  }
+
+  .carta-contenedor {
+    position: relative;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
 
   .celda img {
@@ -488,8 +605,38 @@ const StyledWrapper = styled.div`
   }
 
   .celda.marcada {
-    border-color: #1a7f37;
-    background: #e8f7ec;
+    border-color: var(--color-red, #D8575D);
+    background: #fff6f4;
+    box-shadow: 0 4px 12px rgba(216, 87, 93, 0.2);
+  }
+
+  .frijol-marcador {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(18deg);
+    width: clamp(26px, 45%, 44px);
+    height: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.42));
+    pointer-events: none;
+    animation: frijolPop 0.24s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 3;
+  }
+
+  @keyframes frijolPop {
+    0% {
+      transform: translate(-50%, -50%) scale(0.3) rotate(0deg);
+      opacity: 0;
+    }
+    75% {
+      transform: translate(-50%, -50%) scale(1.15) rotate(22deg);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(1) rotate(18deg);
+      opacity: 1;
+    }
   }
 
   .modo-juego {

@@ -1,7 +1,7 @@
 import { io, type Socket } from 'socket.io-client'
 
 // Backend: salas y partidas van por WebSockets; REST solo para auth y catálogo.
-const SERVER_URL = 'http://localhost:3000'
+const SERVER_URL = import.meta.env.VITE_API_URL
 
 export interface JugadorEnSala {
   accountNumber: string
@@ -154,7 +154,49 @@ const conectar = (): Socket => {
     notificarPartida()
   })
 
+  socket.on('rooms:updated', (salas: ResumenSala[]) => {
+    ultimasSalas = salas || []
+    notificarSalas()
+  })
+
   return socket
+}
+
+export interface ResumenSala {
+  code: string
+  name: string
+  hostAccountNumber: string
+  players: number
+  maxPlayers: number
+}
+
+let ultimasSalas: ResumenSala[] = []
+const suscriptoresSalas = new Set<(salas: ResumenSala[]) => void>()
+
+const notificarSalas = (): void => {
+  for (const cb of suscriptoresSalas) cb(ultimasSalas)
+}
+
+/** Pide la lista de salas disponibles al servidor */
+export const pedirSalasDisponibles = async (): Promise<ResumenSala[]> => {
+  try {
+    const res = (await emitirConAck('rooms:list', null)) as ResumenSala[]
+    ultimasSalas = res || []
+    notificarSalas()
+    return ultimasSalas
+  } catch (err) {
+    console.error('Error al pedir salas:', err)
+    return ultimasSalas
+  }
+}
+
+/** Suscribe a cambios en las salas disponibles en tiempo real */
+export const suscribirSalas = (cb: (salas: ResumenSala[]) => void): (() => void) => {
+  suscriptoresSalas.add(cb)
+  if (ultimasSalas.length > 0) cb(ultimasSalas)
+  return () => {
+    suscriptoresSalas.delete(cb)
+  }
 }
 
 /** Conecta el socket tras el login. Debe llamarse con el token ya guardado. */
@@ -173,6 +215,8 @@ export const desconectarSocket = (): void => {
   cartasCantadas = []
   ultimaLlamada = 0
   ganador = null
+  ultimasSalas = []
+  suscriptoresSalas.clear()
 }
 
 /** Emite un evento esperando su ack, convertido a Promise. */
