@@ -71,13 +71,17 @@ export const conectar = (): Socket => {
     });
 
     // Llegada de una carta cantada
-    socket.on('card:called', (payload: Carta) => {
-      useGameStore.getState().addCartaCantada(payload);
+    socket.on('card:called', (payload: { roomCode: string; card: Carta; calledCount: number }) => {
+      useGameStore.getState().addCartaCantada(payload.card);
     });
 
     // Alguien grita lotería
-    socket.on('game:winner', (payload: GanadorInfo) => {
-      useGameStore.getState().setGanador(payload);
+    socket.on('game:finished', (payload: { roomCode: string; winner: string; pattern: string | null; winnerAlias?: string }) => {
+      useGameStore.getState().setGanador({
+        winner: payload.winner,
+        pattern: payload.pattern,
+        winnerAlias: payload.winnerAlias
+      });
     });
 
     // Notificaciones de jugadas en tiempo real
