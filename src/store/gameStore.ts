@@ -19,6 +19,7 @@ interface GameState {
   ultimaLlamada: number;
   ganador: GanadorInfo | null;
   notificaciones: NotificacionJugada[];
+  puntajes: Record<string, number>;
   
   // Lista de salas globales (Menú principal)
   ultimasSalas: ResumenSala[];
@@ -37,6 +38,7 @@ interface GameState {
   addCartaCantada: (carta: Carta) => void;
   setCartasHistorial: (cartas: Carta[]) => void;
   setGanador: (ganador: GanadorInfo) => void;
+  setPuntajes: (puntajes: Record<string, number>) => void;
   addNotificacion: (notificacion: NotificacionJugada) => void;
   
   // Actualizadores globales
@@ -51,6 +53,7 @@ const initialState = {
   ultimaLlamada: 0,
   ganador: null,
   notificaciones: [],
+  puntajes: {},
   ultimasSalas: []
 };
 
@@ -64,7 +67,8 @@ export const useGameStore = create<GameState>((set) => ({
     cartasCantadas: [],
     ultimaLlamada: 0,
     ganador: null,
-    notificaciones: []
+    notificaciones: [],
+    puntajes: {}
   }),
   
   setJugadoresEnSala: (jugadores) => set({ jugadoresEnSala: jugadores }),
@@ -90,6 +94,8 @@ export const useGameStore = create<GameState>((set) => ({
   }),
   
   setGanador: (ganador) => set({ ganador }),
+  
+  setPuntajes: (puntajes) => set({ puntajes }),
   
   addNotificacion: (notif) => set((state) => {
     // Evitar spam de notificaciones en UI limitando a las últimas 10

@@ -1,5 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import { useGameStore } from '../store/gameStore';
+import { ETIQUETAS_MODOS } from '../utils/constants';
 import type { 
   DatosSala, 
   ModoJuego, 
@@ -75,8 +76,30 @@ export const conectar = (): Socket => {
       useGameStore.getState().addCartaCantada(payload.card);
     });
 
-    // Alguien grita lotería
-    socket.on('game:finished', (payload: { roomCode: string; winner: string; pattern: string | null; winnerAlias?: string }) => {
+    // Alguien se llevó un patrón (esquinas, centro, chorro...): suma puntos y la partida sigue
+    socket.on('game:pattern-claimed', (payload: {
+      roomCode: string;
+      accountNumber: string;
+      alias: string;
+      patterns: ModoJuego[];
+      points: number;
+      scores: Record<string, number>;
+    }) => {
+      const store = useGameStore.getState();
+      store.setPuntajes(payload.scores ?? {});
+
+      const nombres = (payload.patterns ?? []).map((p) => ETIQUETAS_MODOS[p] ?? p).join(' y ');
+      store.addNotificacion({
+        accountNumber: payload.accountNumber,
+        alias: payload.alias,
+        pattern: payload.patterns?.[0] ?? '',
+        message: `${payload.alias} se llevó ${nombres} (+${payload.points})`,
+      });
+    });
+
+    // Alguien hizo la llena: se acabó la partida
+    socket.on('game:finished', (payload: { roomCode: string; winner: string; pattern: string | null; winnerAlias?: string; scores?: Record<string, number> }) => {
+      if (payload.scores) useGameStore.getState().setPuntajes(payload.scores);
       useGameStore.getState().setGanador({
         winner: payload.winner,
         pattern: payload.pattern,
