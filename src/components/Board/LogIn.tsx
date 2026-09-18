@@ -111,31 +111,6 @@ const Form = ({ onLoginExitoso }: LogInProps) => {
           </button>
         </form>
 
-        <div className="separador-invitado">
-          <span>o</span>
-        </div>
-
-        {modoInvitado ? (
-          <form className="form form-invitado" onSubmit={manejarInvitado}>
-            <div className="form-group">
-              <input
-                placeholder="Tu nombre de invitado"
-                type="text"
-                maxLength={30}
-                value={nombreInvitado}
-                onChange={(e) => setNombreInvitado(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <button type="submit" className="form-submit-btn btn-invitado" disabled={cargando}>
-              {cargando ? 'Entrando...' : 'Entrar como invitado'}
-            </button>
-          </form>
-        ) : (
-          <button type="button" className="link-invitado" onClick={() => setModoInvitado(true)}>
-            Jugar como invitado
-          </button>
-        )}
       </div>
     </StyledWrapper>
   )

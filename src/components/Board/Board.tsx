@@ -10,15 +10,9 @@ const cartasAleatorias = Array.from({ length: 54 }, (_, i) => i + 1)
     name: `Carta ${id}`,
   }))
 
-interface BoardProps {
-  board: { cards: BoardCard[] }
-  roomCode: string
-}
-
-// RF-04 / RF-05: la tabla ya viene armada y validada desde el backend
-// (16 cartas, sin repetidas) al crear o unirse a la sala. Aqui solo se
-// muestra, ya no se genera nada localmente.
-const Board = ({ board, roomCode }: BoardProps) => {
+// Vista previa decorativa del menú: 16 cartas al azar.
+// La tabla real de la partida llega del backend y se pinta en WaitingRoom.
+const Board = () => {
   return (
     <StyledBoard>
       {cartasAleatorias.map((carta, index) => (

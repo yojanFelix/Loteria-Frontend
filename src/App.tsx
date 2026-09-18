@@ -46,7 +46,7 @@ function App() {
     const accountNumber = localStorage.getItem('accountNumber');
 
     try {
-      await fetch('http://localhost:3000/api/users/logout', {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/users/logout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountNumber }),

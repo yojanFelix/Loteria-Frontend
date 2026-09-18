@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { crearSala, unirseSala, type ModoJuego } from '../../socket/socket';
@@ -76,6 +76,9 @@ const PATRONES: PatronInfo[] = [
 
 const TEXTO_VALIDO = /^[\p{L}\p{N} _\-()]+$/u;
 
+// Esta pantalla no pide límite de jugadores, así que se crea con el tope alto.
+const MAX_JUGADORES = 100;
+
 function Home() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -146,11 +149,25 @@ function Home() {
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
 
-  const handleCreateRoom = (nombre: string, maxPlayers: number, alias: string, modo: ModoJuego) => {
+  // Da formato XXX-XXX mientras se escribe, igual que el código que llega por QR.
+  const handleCodigoChange = (e: ChangeEvent<HTMLInputElement>) => {
     setError('');
-    setCargando(true);
+    let raw = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    if (raw.length > 3) {
+      raw = `${raw.slice(0, 3)}-${raw.slice(3)}`;
+    }
+    setCodigo(raw);
+  };
 
-    const socket = getSocket();
+  const handleUnirse = async (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    const cleanCode = codigo.trim().toUpperCase();
+    if (cleanCode.length !== 7) {
+      setError('El código debe tener el formato XXX-XXX');
+      return;
+    }
 
     const cleanAlias = aliasUnirse.trim();
     if (cleanAlias.length < 3 || cleanAlias.length > 45) {
@@ -173,12 +190,11 @@ function Home() {
     }
   };
 
-  const handleJoinRoom = (e: React.FormEvent) => {
+  const handleCrear = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-    setCargando(true);
 
-    const cleanNombre = (nombreSala.trim() || 'Sala Mexicana');
+    const cleanNombre = nombreSala.trim() || 'Sala Mexicana';
     if (cleanNombre.length < 3 || cleanNombre.length > 45) {
       setError('El nombre de la sala debe tener entre 3 y 45 caracteres');
       return;
@@ -198,20 +214,19 @@ function Home() {
       return;
     }
 
-    socket.emit(
-      'room:join',
-      { code: joinCode, alias },
-      (response: { ok: boolean; data?: any; message?: string }) => {
-        setCargando(false);
-
-        if (!response.ok) {
-          setError(response.message || 'No se pudo unir a la sala');
-          return;
-        }
+    // Cada patrón visual se traduce al modo que entiende el backend, sin repetir.
+    // Si no se elige ninguno, el backend juega con tabla llena.
+    const modos = [
+      ...new Set(
+        patronesSeleccionados
+          .map((id) => PATRONES.find((patron) => patron.id === id)?.modoBackend)
+          .filter((modo): modo is ModoJuego => Boolean(modo)),
+      ),
+    ];
 
     setCargando(true);
     try {
-      const sala = await crearSala(cleanNombre, 100, cleanAlias, modos);
+      const sala = await crearSala(cleanNombre, MAX_JUGADORES, cleanAlias, modos);
       navigate(`/room/${sala.code}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear la sala');
