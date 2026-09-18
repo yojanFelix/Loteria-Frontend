@@ -10,6 +10,7 @@ import type { ModoJuego } from '../../types/game.types';
 import Lobby from './components/Lobby/Lobby';
 import GameBoard from './components/GameBoard/GameBoard';
 import EventFeed from './components/EventFeed/EventFeed';
+import Scoreboard from './components/Scoreboard/Scoreboard';
 import WinnerBanner from './components/WinnerBanner/WinnerBanner';
 
 interface WaitingRoomProps {
@@ -57,6 +58,8 @@ export default function WaitingRoom({ code, hostAccountNumber, modos, onSalir }:
             {ganador && <WinnerBanner ganador={ganador} aliasGanador={aliasGanador} />}
 
             <GameBoard code={code} />
+
+            <Scoreboard />
 
             <EventFeed />
           </div>
@@ -325,6 +328,54 @@ const StyledWrapper = styled.div`
       transform: translate(-50%, -50%) scale(1) rotate(var(--rotacion, 18deg));
       opacity: 1;
     }
+  }
+
+  .marcador {
+    border: 2px solid #e5e4e7;
+    border-radius: 10px;
+    padding: 12px 16px;
+    text-align: left;
+  }
+
+  .marcador h3 {
+    margin: 0 0 8px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #8b8e98;
+  }
+
+  .lista-marcador {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .lista-marcador li {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--color-dark, #465D6B);
+  }
+
+  .lista-marcador .posicion {
+    color: #8b8e98;
+    min-width: 18px;
+  }
+
+  .lista-marcador .alias {
+    flex: 1;
+    overflow-wrap: anywhere;
+  }
+
+  .lista-marcador .puntos {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
   .feed-notificaciones {

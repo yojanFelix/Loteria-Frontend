@@ -91,7 +91,8 @@ function Home() {
   // Estado para "Crear"
   const [nombreSala, setNombreSala] = useState('');
   const [aliasCrear, setAliasCrear] = useState('');
-  const [patronesSeleccionados, setPatronesSeleccionados] = useState<PatronVisual[]>([]);
+  // La llena siempre va: es la jugada que cierra la partida, no se puede quitar.
+  const [patronesSeleccionados, setPatronesSeleccionados] = useState<PatronVisual[]>(['LLENA']);
 
   // Si viene con un código de sala desde URL o QR, abrir vista "unirse" con el código
   useEffect(() => {
@@ -137,6 +138,10 @@ function Home() {
 
   const togglePatron = (id: PatronVisual) => {
     setError('');
+    if (id === 'LLENA') {
+      setError('La llena siempre está activa: es la jugada que termina la partida');
+      return;
+    }
     setPatronesSeleccionados((prev) => {
       if (prev.includes(id)) {
         return prev.filter((p) => p !== id);
