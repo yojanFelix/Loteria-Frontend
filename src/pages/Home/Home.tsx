@@ -74,7 +74,7 @@ const PATRONES: PatronInfo[] = [
   },
 ];
 
-const TEXTO_VALIDO = /^[\p{L}\p{N} _-]+$/u;
+const TEXTO_VALIDO = /^[\p{L}\p{N} _\-()]+$/u;
 
 function Home() {
   const navigate = useNavigate();
@@ -170,7 +170,7 @@ function Home() {
       return;
     }
     if (!TEXTO_VALIDO.test(cleanAlias)) {
-      setError('El alias solo puede tener letras, números, espacios y guiones');
+      setError('El alias solo puede tener letras, números, espacios, guiones y paréntesis');
       return;
     }
 
@@ -195,7 +195,7 @@ function Home() {
       return;
     }
     if (!TEXTO_VALIDO.test(cleanNombre)) {
-      setError('El nombre solo puede tener letras, números y espacios');
+      setError('El nombre solo puede tener letras, números, espacios, guiones y paréntesis');
       return;
     }
 
@@ -205,7 +205,7 @@ function Home() {
       return;
     }
     if (!TEXTO_VALIDO.test(cleanAlias)) {
-      setError('El alias solo puede tener letras, números y espacios');
+      setError('El alias solo puede tener letras, números, espacios, guiones y paréntesis');
       return;
     }
 
