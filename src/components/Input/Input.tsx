@@ -16,7 +16,6 @@ const Input = ({ value, onChange }: InputProps) => {
         }
         onChange(texto);
     }
-  }
 
   return (
     <StyledWrapper>

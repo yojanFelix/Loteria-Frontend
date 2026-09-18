@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import './App.css'
 import PapelPicado from './components/PapelPicado/PapelPicado'
 import DesertLandscape from './components/DesertLandscape/DesertLandscape'
@@ -35,6 +35,10 @@ function App() {
     setRoomCode(null)
     setBoard(null)
     setAutenticado(false)
+  }
+
+  const handleLoginExitoso = () => {
+    setAutenticado(true)
   }
 
   const handleRoomReady = (code: string, boardData: unknown) => {
