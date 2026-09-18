@@ -10,9 +10,9 @@ import checkmarkImg from '../../assets/theme/checkmark.png';
 import { ArrowLeftIcon, RoomIcon, CheckIcon } from '../../components/Icons/Icons';
 
 interface HomeProps {
-  onIngresarSala: (sala: DatosSala, modo: ModoJuego | null) => void;
+  onIngresarSala: (sala: DatosSala, modos: ModoJuego[]) => void;
   initialJoinCode?: string | null;
-  salaActiva?: { sala: DatosSala; modo: ModoJuego | null } | null;
+  salaActiva?: { sala: DatosSala } | null;
   onVolverAPartida?: () => void;
   onAbandonarSalaActiva?: () => void;
 }
@@ -74,7 +74,7 @@ const PATRONES: PatronInfo[] = [
   {
     id: 'LLENA',
     nombre: 'Llena',
-    modoBackend: 'LINE',
+    modoBackend: 'FULL_BOARD',
     casillas: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
   },
 ];
@@ -186,7 +186,7 @@ function Home({
     setCargando(true);
     try {
       const sala = await unirseSala(cleanCode, cleanAlias);
-      onIngresarSala(sala, null);
+      onIngresarSala(sala, sala.winModes ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo unir a la sala');
     } finally {
@@ -223,12 +223,18 @@ function Home({
       return;
     }
 
-    const patronActual = PATRONES.find((p) => patronesSeleccionados.includes(p.id)) ?? PATRONES[0];
+    // Cada patrón visual seleccionado aporta un modo de victoria al backend.
+    // Varios patrones (p. ej. Chorro y Equis) pueden mapear al mismo modo; se deduplica.
+    const modos = [...new Set(
+      PATRONES
+        .filter((p) => patronesSeleccionados.includes(p.id))
+        .map((p) => p.modoBackend)
+    )];
 
     setCargando(true);
     try {
-      const sala = await crearSala(cleanNombre, 100, cleanAlias, patronActual.modoBackend);
-      onIngresarSala(sala, patronActual.modoBackend);
+      const sala = await crearSala(cleanNombre, 100, cleanAlias, modos);
+      onIngresarSala(sala, modos);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear la sala');
     } finally {

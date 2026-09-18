@@ -27,7 +27,7 @@ type Vista = 'login' | 'home' | 'espera'
 
 interface ActiveRoomCache {
   sala: DatosSala
-  modo: ModoJuego | null
+  modos: ModoJuego[]
   alias?: string
 }
 
@@ -55,12 +55,13 @@ function App() {
   const [modalActivo, setModalActivo] = useState<'salas' | 'ranking' | 'reglas' | 'perfil' | null>(null)
   const [mostrarConfirmacionSalir, setMostrarConfirmacionSalir] = useState(false)
 
-  const [sala, setSala] = useState<{ sala: DatosSala; modo: ModoJuego | null } | null>(() => {
+  const [sala, setSala] = useState<{ sala: DatosSala; modos: ModoJuego[] } | null>(() => {
     try {
       const cached = localStorage.getItem('activeRoom')
       if (cached) {
         const parsed: ActiveRoomCache = JSON.parse(cached)
-        return { sala: parsed.sala, modo: parsed.modo }
+        const modos = Array.isArray(parsed.modos) ? parsed.modos : []
+        return { sala: parsed.sala, modos }
       }
     } catch {
       localStorage.removeItem('activeRoom')
@@ -85,7 +86,10 @@ function App() {
           // Reconectar a la sala previa en el backend para re-suscribir el socket
           unirseSala(parsed.sala.code, alias)
             .then((salaActualizada) => {
-              setSala({ sala: salaActualizada, modo: parsed.modo })
+              const modos = Array.isArray(parsed.modos) && parsed.modos.length > 0
+                ? parsed.modos
+                : (salaActualizada.winModes ?? [])
+              setSala({ sala: salaActualizada, modos })
               setVista('espera')
             })
             .catch((err) => {
@@ -135,15 +139,15 @@ function App() {
     setAutenticado(true)
   }
 
-  const ingresarSala = (datos: DatosSala, modo: ModoJuego | null) => {
+  const ingresarSala = (datos: DatosSala, modos: ModoJuego[]) => {
     const aliasGuardar = localStorage.getItem('userName') || ''
-    const roomCache: ActiveRoomCache = { sala: datos, modo, alias: aliasGuardar }
+    const roomCache: ActiveRoomCache = { sala: datos, modos, alias: aliasGuardar }
     try {
       localStorage.setItem('activeRoom', JSON.stringify(roomCache))
     } catch {
       // Ignorar fallo de cuota en storage
     }
-    setSala({ sala: datos, modo })
+    setSala({ sala: datos, modos })
     setVista('espera')
     sessionStorage.removeItem('pendingJoinCode')
     setPendingJoinCode(null)
@@ -177,7 +181,7 @@ function App() {
 
     const aliasFinal = alias.trim() || accountNumber || 'Jugador'
     const salaRetornada = await unirseSala(codigo, aliasFinal)
-    ingresarSala(salaRetornada, null)
+    ingresarSala(salaRetornada, salaRetornada.winModes ?? [])
     setModalActivo(null)
   }
 
@@ -203,7 +207,7 @@ function App() {
             code={sala.sala.code}
             maxPlayers={sala.sala.maxPlayers}
             hostAccountNumber={sala.sala.hostAccountNumber}
-            modo={sala.modo}
+            modos={sala.modos}
             onSalir={salirDeSala}
           />
         ) : (

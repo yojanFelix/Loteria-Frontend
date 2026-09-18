@@ -14,6 +14,7 @@ export interface DatosSala {
   hostAccountNumber: string
   status: string
   maxPlayers: number
+  winModes?: ModoJuego[]
 }
 
 interface AckResponse {
@@ -75,15 +76,15 @@ export interface EstadoPartida {
 }
 
 // --- Modo de juego (lo elige el host al crear la sala) ---
-// LINE y CORNERS ya existen en el backend; CENTER_2X2 y SQUARE_2X2 son nuevos
-// y requieren soporte en checkVictory (ver reporte de gaps al final).
-export type ModoJuego = 'LINE' | 'CORNERS' | 'CENTER_2X2' | 'SQUARE_2X2'
+// Todos estos modos ya están soportados por el backend en checkVictory.
+export type ModoJuego = 'LINE' | 'CORNERS' | 'CENTER_2X2' | 'SQUARE_2X2' | 'FULL_BOARD'
 
 export const ETIQUETAS_MODOS: Record<ModoJuego, string> = {
   LINE: 'Chorro (una línea)',
   CORNERS: 'Cuatro esquinas',
   CENTER_2X2: 'Centro 2x2',
   SQUARE_2X2: 'Cuadrito 2x2',
+  FULL_BOARD: 'Cartón lleno',
 }
 
 /** Traduce el patrón con el que ganó alguien a texto legible. */
@@ -262,15 +263,15 @@ const emitirConAck = (evento: string, payload: unknown): Promise<unknown> => {
   })
 }
 
-/** room:create — el backend exige name (3-30) y alias (3-12), y genera el código.
- *  winMode viaja como extra: el backend aún no lo persiste (gap a reportar). */
+/** room:create — el backend exige name (3-30), alias (3-12) y una lista de
+ *  winModes (los patrones que dan el premio); genera el código de sala. */
 export const crearSala = async (
   name: string,
   maxPlayers: number,
   alias: string,
-  winMode: ModoJuego,
+  winModes: ModoJuego[],
 ): Promise<DatosSala> => {
-  const sala = (await emitirConAck('room:create', { name, maxPlayers, alias, winMode })) as DatosSala
+  const sala = (await emitirConAck('room:create', { name, maxPlayers, alias, winModes })) as DatosSala
 
   salaActual = sala.code
   // El broadcast del create llega antes del ack y sin código conocido; sembramos al host.
