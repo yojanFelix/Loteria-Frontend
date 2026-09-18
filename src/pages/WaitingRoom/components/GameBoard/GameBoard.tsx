@@ -81,9 +81,9 @@ export default function GameBoard({ code }: GameBoardProps) {
 
     if (!isMarked) {
       try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioContext) {
-          const audioCtx = new AudioContext();
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+          const audioCtx = new AudioContextClass();
           const oscillator = audioCtx.createOscillator();
           const gainNode = audioCtx.createGain();
           
@@ -96,6 +96,10 @@ export default function GameBoard({ code }: GameBoardProps) {
           
           oscillator.connect(gainNode);
           gainNode.connect(audioCtx.destination);
+          
+          oscillator.onended = () => {
+            audioCtx.close().catch(() => {});
+          };
           
           oscillator.start();
           oscillator.stop(audioCtx.currentTime + 0.1);

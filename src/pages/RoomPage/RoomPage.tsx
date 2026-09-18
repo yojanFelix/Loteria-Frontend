@@ -25,14 +25,15 @@ export default function RoomPage() {
       let alias = localStorage.getItem('userName') || accountNumber;
 
       try {
-        const salaActualizada = await unirseSala(roomId, alias);
+        const cleanRoomId = roomId.toUpperCase();
+        const salaActualizada = await unirseSala(cleanRoomId, alias);
         setSala({ 
           datos: salaActualizada, 
           modos: salaActualizada.winModes ?? [] 
         });
       } catch (err) {
         console.error('Error al unirse a la sala:', err);
-        setError('No se pudo entrar a la sala. Es posible que no exista o esté llena.');
+        setError(err instanceof Error ? err.message : 'No se pudo entrar a la sala. Es posible que no exista o esté llena.');
       } finally {
         setCargando(false);
       }
