@@ -107,6 +107,22 @@ export interface GanadorInfo {
 
 let ganador: GanadorInfo | null = null
 
+// --- Feed de notificaciones de jugadas ---
+// El backend arma el texto del mensaje (nadie escribe libremente).
+export interface NotificacionJugada {
+  accountNumber: string
+  alias: string
+  pattern: string
+  message: string
+}
+
+let notificaciones: NotificacionJugada[] = []
+const suscriptoresNotificaciones = new Set<(n: NotificacionJugada[]) => void>()
+
+const notificarFeed = (): void => {
+  for (const cb of suscriptoresNotificaciones) cb([...notificaciones])
+}
+
 // Última lista de jugadores conocida por sala. Se alimenta del broadcast
 // room:players y de los acks de crear/unirse, así la sala de espera la lee
 // al montarse sin perderse el evento que disparó su propio join.
@@ -157,6 +173,11 @@ const conectar = (): Socket => {
   socket.on('rooms:updated', (salas: ResumenSala[]) => {
     ultimasSalas = salas || []
     notificarSalas()
+  })
+
+  socket.on('room:notification', (notificacion: NotificacionJugada) => {
+    notificaciones.push(notificacion)
+    notificarFeed()
   })
 
   return socket
@@ -217,6 +238,8 @@ export const desconectarSocket = (): void => {
   ganador = null
   ultimasSalas = []
   suscriptoresSalas.clear()
+  notificaciones = []
+  suscriptoresNotificaciones.clear()
 }
 
 /** Emite un evento esperando su ack, convertido a Promise. */
@@ -367,3 +390,19 @@ export const suscribirCartas = (cb: () => void): (() => void) => {
     suscriptoresCartas.delete(cb)
   }
 }
+
+/** Historial de notificaciones de jugadas de la partida. */
+export const getNotificaciones = (): NotificacionJugada[] => notificaciones
+
+/** Suscripción al feed de notificaciones; entrega el estado actual al suscribirse. */
+export const suscribirNotificaciones = (cb: (n: NotificacionJugada[]) => void): (() => void) => {
+  suscriptoresNotificaciones.add(cb)
+  cb([...notificaciones])
+  return () => {
+    suscriptoresNotificaciones.delete(cb)
+  }
+}
+
+/** Avisa al servidor de una jugada; el servidor arma el mensaje y lo retransmite. */
+export const notificarJugada = (code: string, pattern: string): Promise<void> =>
+  emitirConAck('room:notification', { code, pattern }).then(() => {})

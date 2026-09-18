@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import Confetti from 'react-confetti';
 import { useWindowSize } from 'react-use';
@@ -10,20 +10,25 @@ import {
   getCartasCantadas,
   getGanador,
   getJugadoresDeSala,
+  getNotificaciones,
   getPartidaIniciada,
   getTablero,
   getUltimaLlamada,
   iniciarPartida,
+  notificarJugada,
   sincronizarEstadoPartida,
   suscribirCartas,
   suscribirJugadores,
+  suscribirNotificaciones,
   suscribirPartida,
   type Carta,
   type GanadorInfo,
   type JugadorEnSala,
   type ModoJuego,
+  type NotificacionJugada,
   type TableroJugador,
 } from '../../socket/socket';
+import { patronesCompletados } from '../../utils/patrones';
 import { imagenDeCarta } from '../../utils/cartas';
 import frijolImg from '../../assets/theme/frijol.png';
 import QRModal from '../../components/QRModal/QRModal';
@@ -62,31 +67,53 @@ const WaitingRoom = ({ code, hostAccountNumber, modo, onSalir }: WaitingRoomProp
       return [];
     }
   });
+  const [notificaciones, setNotificaciones] = useState<NotificacionJugada[]>(getNotificaciones);
+  // Patrones que este cliente ya anunció; evita spam al marcar/desmarcar varias veces.
+  const patronesAnunciados = useRef(new Set<string>());
 
   const { width, height } = useWindowSize();
 
   const alternarCarta = (id: number) => {
-    setMarcadas((prev) => {
-      const isMarked = prev.includes(id);
-      const nuevo = isMarked ? prev.filter((m) => m !== id) : [...prev, id];
-      
-      // Reproducir sonido al marcar (usando un Audio base64 muy corto)
-      if (!isMarked) {
-        try {
-          // Sonido corto de 'pop' / 'click' para el frijolito
-          const popSound = new Audio('data:audio/mp3;base64,//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq');
-          popSound.volume = 0.5;
-          popSound.play().catch(() => {}); // Ignorar error si el navegador bloquea autoplay
-        } catch (e) {}
-      }
+    // Solo se puede marcar una carta que el cantor ya nombró.
+    const yaCantada = cartasCantadas.some((carta) => carta.id === id);
+    if (!yaCantada) {
+      setError('No puedes marcar esa carta: aún no ha sido cantada');
+      return;
+    }
+    setError('');
 
-      try {
-        localStorage.setItem(`marcadas_${code}`, JSON.stringify(nuevo));
-      } catch {
-        // Ignorar fallo de almacenamiento
+    const isMarked = marcadas.includes(id);
+    const nuevo = isMarked ? marcadas.filter((m) => m !== id) : [...marcadas, id];
+
+    // Al marcar, avisamos al servidor de TODOS los patrones que quedaron
+    // completos con esta jugada (línea, esquinas, etc.), sin importar el modo.
+    if (!isMarked && tablero) {
+      const completados = patronesCompletados(tablero.cards, nuevo);
+      for (const pattern of completados) {
+        const clave = `${code}_${pattern}`;
+        if (!patronesAnunciados.current.has(clave)) {
+          patronesAnunciados.current.add(clave);
+          void notificarJugada(code, pattern);
+        }
       }
-      return nuevo;
-    });
+    }
+
+    // Reproducir sonido al marcar (usando un Audio base64 muy corto)
+    if (!isMarked) {
+      try {
+        // Sonido corto de 'pop' / 'click' para el frijolito
+        const popSound = new Audio('data:audio/mp3;base64,//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq');
+        popSound.volume = 0.5;
+        popSound.play().catch(() => {}); // Ignorar error si el navegador bloquea autoplay
+      } catch (e) {}
+    }
+
+    try {
+      localStorage.setItem(`marcadas_${code}`, JSON.stringify(nuevo));
+    } catch {
+      // Ignorar fallo de almacenamiento
+    }
+    setMarcadas(nuevo);
   };
 
   // El backend emite room:players a la sala en cada cambio; aquí solo nos
@@ -125,6 +152,12 @@ const WaitingRoom = ({ code, hostAccountNumber, modo, onSalir }: WaitingRoomProp
         }
       }
     });
+    return cancelar;
+  }, []);
+
+  // Feed de notificaciones de jugadas: llegan por broadcast room:notification.
+  useEffect(() => {
+    const cancelar = suscribirNotificaciones(setNotificaciones);
     return cancelar;
   }, []);
 
@@ -326,6 +359,19 @@ const WaitingRoom = ({ code, hostAccountNumber, modo, onSalir }: WaitingRoomProp
           ) : (
             <p className="cargando">Esperando tu tablero…</p>
           )}
+
+          <div className="feed-notificaciones">
+            <h3>Jugadas de la sala</h3>
+            {notificaciones.length === 0 ? (
+              <p className="cargando">Aún no hay jugadas destacadas</p>
+            ) : (
+              <ul className="lista-notificaciones">
+                {notificaciones.map((notif, index) => (
+                  <li key={`${notif.accountNumber}-${index}`}>{notif.message}</li>
+                ))}
+              </ul>
+            )}
+          </div>
 
           {error && <p className="error-message">{error}</p>}
 
@@ -637,6 +683,42 @@ const StyledWrapper = styled.div`
       transform: translate(-50%, -50%) scale(1) rotate(18deg);
       opacity: 1;
     }
+  }
+
+  .feed-notificaciones {
+    border: 2px solid #e5e4e7;
+    border-radius: 10px;
+    padding: 12px 16px;
+    text-align: left;
+  }
+
+  .feed-notificaciones h3 {
+    margin: 0 0 8px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #8b8e98;
+    text-align: center;
+  }
+
+  .lista-notificaciones {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 180px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .lista-notificaciones li {
+    padding: 8px 10px;
+    background: #f6f3ea;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #212121;
+    border-left: 3px solid #e0a800;
   }
 
   .modo-juego {
